@@ -144,8 +144,8 @@ function _tpu_launch {
 
     tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
     for host in $tpu_ips; do
-        echo "tmux new -d -s PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command"
-        ssh $host "tmux new -d -s PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command" &
+        echo "tmux new -d -s launch \"PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command\""
+        ssh $host "tmux new -d -s launch \"PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command\"" &
     done
     wait &> /dev/null
 }
