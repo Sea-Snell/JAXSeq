@@ -18,12 +18,13 @@ def get_dtype(use_fp16: bool):
         return jnp.float16
     return jnp.float32
 
-def handle_checkpoint_path(model_checkpoint_path: str, gcloud_project: Optional[str]=None) -> Tuple[str, tempfile.TemporaryDirectory]:
+def handle_checkpoint_path(model_checkpoint_path: str, gcloud_project: Optional[str]=None, 
+                           gcloud_token: Optional[Any]=None) -> Tuple[str, tempfile.TemporaryDirectory]:
     if model_checkpoint_path.startswith('gcs://'):
         model_checkpoint_path = model_checkpoint_path[len('gcs://'):]
         tmp_dir = tempfile.TemporaryDirectory()
         # download data
-        gcsfs.GCSFileSystem(project=gcloud_project).get(model_checkpoint_path, tmp_dir.name, recursive=True)
+        gcsfs.GCSFileSystem(project=gcloud_project, token=gcloud_token).get(model_checkpoint_path, tmp_dir.name, recursive=True)
         return tmp_dir.name, tmp_dir
     return model_checkpoint_path, None
 

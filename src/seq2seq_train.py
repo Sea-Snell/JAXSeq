@@ -17,7 +17,8 @@ import tempfile
 import gcsfs
 
 def save_checkpoint_path(model_output_path: str, model: FlaxPreTrainedModel, 
-                         params: PyTree, gcloud_project: Optional[str]=None) -> None:
+                         params: PyTree, gcloud_project: Optional[str]=None, 
+                         gcloud_token: Optional[Any]=None) -> None:
     if model_output_path.startswith('gcs://'):
         model_output_path = model_output_path[len('gcs://'):]
         # save to tmp_dir
@@ -27,7 +28,7 @@ def save_checkpoint_path(model_output_path: str, model: FlaxPreTrainedModel,
             params=params, 
         )
         # upload to gcloud bucket
-        gcsfs.GCSFileSystem(project=gcloud_project).put(tmp_dir.name, model_output_path, recursive=True)
+        gcsfs.GCSFileSystem(project=gcloud_project, token=gcloud_token).put(tmp_dir.name, model_output_path, recursive=True)
         # delete temp_dir
         tmp_dir.cleanup()
     else:
@@ -36,10 +37,10 @@ def save_checkpoint_path(model_output_path: str, model: FlaxPreTrainedModel,
             params=params, 
         )
 
-def delete_checkpoint(checkpoint_path: str, gcloud_project: Optional[str]=None) -> None:
+def delete_checkpoint(checkpoint_path: str, gcloud_project: Optional[str]=None, gcloud_token: Optional[Any]=None) -> None:
     if checkpoint_path.startswith('gcs://'):
         checkpoint_path = checkpoint_path[len('gcs://'):]
-        gcsfs.GCSFileSystem(project=gcloud_project).rm(checkpoint_path, recursive=True)
+        gcsfs.GCSFileSystem(project=gcloud_project, token=gcloud_token).rm(checkpoint_path, recursive=True)
     else:
         os.system('rm -rf %s' % (checkpoint_path))
 
@@ -95,6 +96,7 @@ def train_loop(
     wandb_config: Optional[Dict[str, Any]], 
     prefetch_batches: Optional[int]=None, 
     gcloud_project: Optional[str]=None, 
+    gcloud_token: Optional[Any]=None, 
 ) -> Tuple[Seq2SeqTrainer, Seq2SeqInference]:
     assert (not use_wandb) or (use_wandb and wandb_project is not None)
     
@@ -149,6 +151,7 @@ def train_loop(
                         model=model, 
                         params=jax.device_get(trainer.params), 
                         gcloud_project=gcloud_project, 
+                        gcloud_token=gcloud_token, 
                     )
                     print('saved.')
                     best_perf = eval_perf
@@ -159,7 +162,7 @@ def train_loop(
 
                 # conditionally delete old checkpoints
                 if (max_checkpoints is not None) and (len(saved_checkpoints) >= max_checkpoints):
-                    delete_checkpoint(saved_checkpoints.popleft(), gcloud_project=gcloud_project)
+                    delete_checkpoint(saved_checkpoints.popleft(), gcloud_project=gcloud_project, gcloud_token=gcloud_token)
 
                 model_dir = os.path.join(save_dir, 'model_%d' % (step+1))
                 save_checkpoint_path(
@@ -167,6 +170,7 @@ def train_loop(
                     model=model, 
                     params=jax.device_get(trainer.params), 
                     gcloud_project=gcloud_project, 
+                    gcloud_token=gcloud_token, 
                 )
                 saved_checkpoints.append(model_dir)
                 print('saved.')
@@ -190,6 +194,7 @@ def train_loop(
             model=model, 
             params=jax.device_get(trainer.params), 
             gcloud_project=gcloud_project, 
+            gcloud_token=gcloud_token, 
         )
         print('saved.')
 

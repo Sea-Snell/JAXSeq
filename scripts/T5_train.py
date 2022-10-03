@@ -1,4 +1,5 @@
-from typing import Optional
+import random
+from typing import Any, Optional
 from transformers import T5Tokenizer
 from models.T5 import load_t5_model, prepend_pad
 import jax
@@ -63,12 +64,13 @@ def main(
     inference_do_sample: bool=True, 
 
     gcloud_project: Optional[str]=None, 
+    gcloud_token_path: Optional[str]=None, 
 ):
     input_args = locals()
     print(input_args)
 
     from utils.gcs_manager import open_pp as open
-    open = partial(open, gcloud_project=gcloud_project)
+    open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
     tokenizer = T5Tokenizer.from_pretrained(model_name)
 
@@ -76,7 +78,6 @@ def main(
         raw_data = json.load(f)
     
     raw_train_data, raw_eval_data = raw_data['train'], raw_data['eval']
-    raw_train_data = raw_train_data[:1000]
     
     train_data = Seq2SeqDataset.from_str_list(
         list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_train_data)), 
@@ -183,6 +184,7 @@ def main(
             pad_token_id=tokenizer.pad_token_id, 
             eos_token_id=tokenizer.eos_token_id, 
         )
+        print('\n=====\n=====\n'.join(random.sample(list(map(lambda x: str((x['prompt'], x['generation'],)), generation_data)), 10)))
         reference_metrics = compute_metrics(generation_data)
 
         return loss_metrics['loss'], {'loss_metrics': loss_metrics, 'reference_metrics': reference_metrics}

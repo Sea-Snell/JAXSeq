@@ -15,9 +15,12 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
 bash Miniconda3-py39_4.12.0-Linux-x86_64.sh -b
 
 # install dependencies
-conda env create -f environment.yml
+source miniconda3/bin/activate
 conda init bash
-pip install --upgrade pip && pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+conda env create -f environment.yml
+conda activate JaxSeq
+python -m pip install --upgrade pip && python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+
 
 # clean up
 rm -rf Miniconda3-py39_4.12.0-Linux-x86_64.sh

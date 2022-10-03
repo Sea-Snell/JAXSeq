@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_HOME=/home/csnell/JAXSeq
+PROJECT_HOME=/Users/charliesnell/current_projects
 PROJECT_NAME=JAXSeq
 
 function _tpu_ips {
@@ -56,6 +56,26 @@ function _tpu_setup {
     wait &> /dev/null
 }
 
+function _gcs_setup {
+    tpu_zone=$1
+    tpu_project=$2
+    tpu_name=$3
+    key_name=$4
+
+    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    for host in $tpu_ips; do
+        scp ~/.config/gcloud/$key_name.json $host:~/.config/gcloud/
+        ssh $host 'gcloud auth activate-service-account --key-file=$PWD/.config/gcloud/'$key_name'.json' &
+    done
+    wait &> /dev/null
+
+    for host in $tpu_ips; do
+        scp ~/.config/gcloud/$key_name.json $host:~/.config/gcloud/
+        ssh $host 'gcloud auth activate-service-account --key-file=$PWD/.config/gcloud/'$key_name'.json' &
+    done
+    wait &> /dev/null
+}
+
 function _tpu_check {
     tpu_zone=$1
     tpu_project=$2
@@ -86,6 +106,19 @@ function _tpu_copy {
     sleep 1s
 }
 
+function _clear_hf_cache {
+    tpu_zone=$1
+    tpu_project=$2
+    tpu_name=$3
+
+    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    for host in $tpu_ips; do
+        ssh $host 'rm -rf ~/.cache/huggingface/transformers/ && mkdir ~/.cache/huggingface/transformers/' &
+    done
+    wait &> /dev/null
+
+}
+
 function _tpu_stop {
     tpu_zone=$1
     tpu_project=$2
@@ -111,7 +144,8 @@ function _tpu_launch {
 
     tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
     for host in $tpu_ips; do
-        ssh $host "tmux new -d -s launch ~/$PROJECT_NAME/jobs/$command" &
+        echo "tmux new -d -s PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command"
+        ssh $host "tmux new -d -s PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command" &
     done
     wait &> /dev/null
 }
@@ -213,6 +247,10 @@ function tpu {
         _tpu_ssh $tpu_zone $tpu_project $3 "$4"
     elif [ "$2" = "reboot" ]; then
         _tpu_reboot $tpu_zone $tpu_project $3
+    elif [ "$2" = "gsetup" ]; then
+        _gcs_setup $tpu_zone $tpu_project $3 $4
+    elif [ "$2" = "clear_hf" ]; then
+        _clear_hf_cache $tpu_zone $tpu_project $3
     else
         echo "Invalid syntax!"
         trap - SIGINT SIGTERM
@@ -221,4 +259,4 @@ function tpu {
     trap - SIGINT SIGTERM
 }
 
-export -f tpu _tpu_ips _tpu_create _tpu_setup _tpu_check _tpu_copy _tpu_stop _tpu_launch _tpu_maintain _tpu_ssh _tpu_reboot
+export -f tpu _tpu_ips _tpu_create _tpu_setup _tpu_check _tpu_copy _tpu_stop _tpu_launch _tpu_maintain _tpu_ssh _tpu_reboot _gcs_setup _clear_hf_cache
