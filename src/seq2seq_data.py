@@ -9,7 +9,6 @@ class Seq2SeqDataset(Dataset):
         assert in_tokens.shape[0] == out_tokens.shape[0]
         self.in_tokens = in_tokens
         self.out_tokens = out_tokens
-        assert in_tokens.shape[0] == len(self.meta)
     
     def __getitem__(self, index):
         in_tokens = self.in_tokens[index]

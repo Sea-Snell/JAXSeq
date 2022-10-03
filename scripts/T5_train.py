@@ -40,6 +40,7 @@ def main(
 
     epochs: int=1, 
     max_steps: Optional[int]=None, 
+    eval_batches: Optional[int]=None, 
     
     lr: float=1e-5, 
     weight_decay: float=0.0, 
@@ -66,16 +67,16 @@ def main(
     input_args = locals()
     print(input_args)
 
-    from utils.gcs_manager import open
+    from utils.gcs_manager import open_pp as open
     open = partial(open, gcloud_project=gcloud_project)
 
     tokenizer = T5Tokenizer.from_pretrained(model_name)
 
-    breakpoint()
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
     
     raw_train_data, raw_eval_data = raw_data['train'], raw_data['eval']
+    raw_train_data = raw_train_data[:1000]
     
     train_data = Seq2SeqDataset.from_str_list(
         list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_train_data)), 
@@ -98,7 +99,7 @@ def main(
     model, params, shard_rules = load_t5_model(
         model_str=model_name, 
         from_pretrained=True, 
-        checkpoint_path=os.path.join(checkpoint_path, 'shard_%d' % (jax.process_index())) if checkpoint_is_sharded else checkpoint_path, 
+        checkpoint_path=os.path.join(checkpoint_path, 'shard_%d' % (jax.process_index())) if checkpoint_is_sharded and checkpoint_path is not None else checkpoint_path, 
         use_fp16=jax.default_backend() == 'tpu', 
         tokenizer=tokenizer, 
         gradient_checkpoint=gradient_checkpoint, 
@@ -162,7 +163,7 @@ def main(
             dataset=eval_data, 
             rng=new_rng, 
             bsize=inference_bsize, 
-            eval_batches=None, 
+            eval_batches=eval_batches, 
         )
 
         rng, new_rng = jax.random.split(rng)
@@ -172,7 +173,7 @@ def main(
             references=list(map(lambda x: [x['out_text']], raw_eval_data)), 
             rng=new_rng, 
             bsize=inference_bsize, 
-            eval_batches=None, 
+            eval_batches=eval_batches, 
             max_input_length=max_input_length, 
             max_output_length=max_output_length, 
             in_str_preproc=None, 

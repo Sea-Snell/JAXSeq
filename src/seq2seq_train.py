@@ -57,7 +57,7 @@ def eval_loss(
     # eval on batches
     rng, new_rng = jax.random.split(rng) if rng is not None else (None, None)
     d = dataloader(new_rng, dataset, bsize, prefetch_batches=prefetch_batches, truncate=True)
-    for i, items in enumerate(d):
+    for i, items in enumerate(tqdm(d)):
         
         # conditionally terminate early
         if eval_batches is not None and i >= eval_batches:

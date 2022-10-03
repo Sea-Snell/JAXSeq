@@ -4,8 +4,6 @@ import jax
 from jaxtyping import PyTree
 from transformers.modeling_flax_utils import FlaxPreTrainedModel
 import tempfile
-from utils.gcs_manager import open
-import os
 import gcsfs
 
 class HuggingfacePjitModelDescription(NamedTuple):

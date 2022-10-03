@@ -5,6 +5,7 @@ import numpy as np
 from rouge_score import rouge_scorer
 from nltk.translate.bleu_score import sentence_bleu
 import string
+from tqdm.auto import tqdm
 
 def generate_language(
     inference: Seq2SeqInference, 
@@ -26,7 +27,7 @@ def generate_language(
 
     all_generations = []
 
-    for i, (prompts, references) in enumerate(batches):
+    for i, (prompts, references) in enumerate(tqdm(batches)):
         
         # conditionally terminate early
         if eval_batches is not None and i >= eval_batches:

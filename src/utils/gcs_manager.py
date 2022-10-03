@@ -3,7 +3,7 @@ from typing import Any, Optional
 import gcsfs
 
 @contextlib.contextmanager
-def open(path: Any, mode: str="rb", gcloud_project: Optional[str]=None, **kwargs):
+def open_pp(path: Any, mode: str="rb", gcloud_project: Optional[str]=None, **kwargs):
     
     # load from google cloud storage if starts with "gcs://"
     if path.startswith('gcs://'):

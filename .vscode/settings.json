@@ -1,3 +1,4 @@
+
 {
     "python.envFile": "${workspaceFolder}/.vscode/.env", 
     "terminal.integrated.env.linux": {
