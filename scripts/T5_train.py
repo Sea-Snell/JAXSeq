@@ -180,6 +180,8 @@ def main(
             max_length=max_output_length, 
             do_sample=inference_do_sample, 
             num_beams=1, 
+            pad_token_id=tokenizer.pad_token_id, 
+            eos_token_id=tokenizer.eos_token_id, 
         )
         reference_metrics = compute_metrics(generation_data)
 
