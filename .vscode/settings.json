@@ -1,0 +1,9 @@
+{
+    "python.envFile": "${workspaceFolder}/.vscode/.env", 
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/src/"
+    }, 
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}/src/"
+    },
+}

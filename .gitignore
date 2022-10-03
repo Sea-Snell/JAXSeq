@@ -5,5 +5,4 @@ wandb/
 outputs/
 data/
 *.pyc
-*json
 *jsonl
