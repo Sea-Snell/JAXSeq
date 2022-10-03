@@ -104,7 +104,7 @@ def compute_metrics(generation_data: List[Dict[str, Any]]):
 
     rouge1 = np.asarray([metric_max_over_references(rouge1_score, pred, ref) for pred, ref in zip(predictions, references)])
     rougel = np.asarray([metric_max_over_references(rougeL_score, pred, ref) for pred, ref in zip(predictions, references)])
-    exact_match = np.asarray([metric_max_over_references(exact_match, pred, ref) for pred, ref in zip(predictions, references)])
+    exact_match_scores = np.asarray([metric_max_over_references(exact_match, pred, ref) for pred, ref in zip(predictions, references)])
 
     diversity2 = diversity(predictions, 2)
     diversity3 = diversity(predictions, 3)
@@ -116,8 +116,8 @@ def compute_metrics(generation_data: List[Dict[str, Any]]):
         "rouge1_err": rouge1.std() / np.sqrt(len(rouge1)),
         "rougeL": rougel.mean(),
         "rougeL_err": rougel.std() / np.sqrt(len(rougel)),
-        "exact_match": exact_match.mean(), 
-        "exact_match_err": exact_match.std() / np.sqrt(len(exact_match)), 
+        "exact_match": exact_match_scores.mean(), 
+        "exact_match_err": exact_match_scores.std() / np.sqrt(len(exact_match_scores)), 
         "diversity2": diversity2, 
         "diversity3": diversity3, 
         "avg_length": avg_length_scores.mean(), 
