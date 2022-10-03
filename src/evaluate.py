@@ -27,7 +27,7 @@ def generate_language(
 
     all_generations = []
 
-    for i, (prompts, references) in enumerate(tqdm(batches)):
+    for i, (prompts, references) in tqdm(enumerate(batches)):
         
         # conditionally terminate early
         if eval_batches is not None and i >= eval_batches:

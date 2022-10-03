@@ -175,7 +175,6 @@ def main(
             bsize=inference_bsize, 
             eval_batches=eval_batches, 
             max_input_length=max_input_length, 
-            max_output_length=max_output_length, 
             in_str_preproc=None, 
             out_str_postproc=None, 
             max_length=max_output_length, 
