@@ -76,9 +76,10 @@ def load_t5_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_c
         lm_head_kernel = jnp.zeros((model.config.hidden_size, n_tokens))
         lm_head_kernel = lm_head_kernel.at[:, :model.config.vocab_size].set(params["lm_head"]["kernel"])
         params["lm_head"]["kernel"] = lm_head_kernel
-        lm_head_bias = jnp.zeros((n_tokens,))
-        lm_head_bias = lm_head_bias.at[:model.config.vocab_size].set(params["lm_head"]["bias"])
-        params["lm_head"]["bias"] = lm_head_bias
+        if "bias" in params["lm_head"]:
+            lm_head_bias = jnp.zeros((n_tokens,))
+            lm_head_bias = lm_head_bias.at[:model.config.vocab_size].set(params["lm_head"]["bias"])
+            params["lm_head"]["bias"] = lm_head_bias
 
     config = T5Config.from_pretrained(model_str, dtype=dtype, gradient_checkpointing=gradient_checkpoint, 
                                       pad_token_id=pad_token_id, vocab_size=n_tokens)

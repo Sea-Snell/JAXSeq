@@ -30,6 +30,7 @@ class LogProbsOutput(NamedTuple):
 
 class TrainStepOutput(NamedTuple):
     loss: jnp.ndarray
+    info: Dict[str, Any]
     params: PyTree
     optim_state: PyTree
 
