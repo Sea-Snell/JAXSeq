@@ -78,6 +78,7 @@ def main(
         raw_data = json.load(f)
     
     raw_train_data, raw_eval_data = raw_data['train'], raw_data['eval']
+    raw_train_data = raw_train_data[:10000]
     
     train_data = Seq2SeqDataset.from_str_list(
         list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_train_data)), 
@@ -232,6 +233,7 @@ def main(
             wandb_run_name=exp_name, 
             wandb_config=None, 
             gcloud_project=gcloud_project, 
+            gcloud_token=gcloud_token_path, 
         )
 
 if __name__ == "__main__":

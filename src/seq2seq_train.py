@@ -24,7 +24,7 @@ def save_checkpoint_path(model_output_path: str, model: FlaxPreTrainedModel,
         # save to tmp_dir
         tmp_dir = tempfile.TemporaryDirectory()
         model.save_pretrained(
-            tmp_dir, 
+            tmp_dir.name, 
             params=params, 
         )
         # upload to gcloud bucket
