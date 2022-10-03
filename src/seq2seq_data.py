@@ -38,14 +38,16 @@ class Seq2SeqDataset(Dataset):
         in_tokens = block_sequences(
             in_tokens, 
             max_len=max_input_length, 
-            pad_right=tokenizer.pad_token_id, 
+            pad_value=tokenizer.pad_token_id, 
+            dtype=np.int32, 
             pad_right=pad_inputs_right, 
             trunc_last=trunc_inputs_last, 
         )
         out_tokens = block_sequences(
             out_tokens, 
             max_len=max_output_length, 
-            pad_right=tokenizer.pad_token_id, 
+            pad_value=tokenizer.pad_token_id, 
+            dtype=np.int32, 
             pad_right=pad_outputs_right, 
             trunc_last=trunc_outputs_last, 
         )
