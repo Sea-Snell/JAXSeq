@@ -26,7 +26,6 @@ conda env create -f environment.yml
 conda activate JaxSeq
 python -m pip install --upgrade pip
 python -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-conda install pytorch=1.11 cudatoolkit=11.3 -c pytorch
 ```
 
 **install with conda (tpu):**
