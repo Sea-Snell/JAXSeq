@@ -33,5 +33,5 @@ python -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/ja
 conda env create -f environment.yml
 conda activate JaxSeq
 python -m pip install --upgrade pip
-python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-releases/libtpu_releases.htmllibtpu_releases.html
+python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 ```
