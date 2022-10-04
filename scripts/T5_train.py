@@ -168,10 +168,12 @@ def main(
         )
 
         rng, new_rng = jax.random.split(rng)
+        generation_prompts = list(raw_eval_data)
+        random.shuffle(generation_prompts)
         generation_data = generate_language(
             inference=inference, 
-            prompts=list(map(lambda x: x['in_text'], raw_eval_data)), 
-            references=list(map(lambda x: [x['out_text']], raw_eval_data)), 
+            prompts=list(map(lambda x: x['in_text'], generation_prompts)), 
+            references=list(map(lambda x: [x['out_text']], generation_prompts)), 
             rng=new_rng, 
             bsize=inference_bsize, 
             eval_batches=eval_batches, 

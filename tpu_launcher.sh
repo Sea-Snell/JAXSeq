@@ -40,18 +40,23 @@ function _tpu_setup {
     tpu_project=$2
     tpu_name=$3
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
-        scp $PROJECT_HOME/$PROJECT_NAME/tpu_vm_setup.sh $host:~/
-        scp $PROJECT_HOME/$PROJECT_NAME/environment.yml $host:~/
+        scp $PROJECT_HOME/$PROJECT_NAME/tpu_vm_setup.sh $host:~/ &
+        scp $PROJECT_HOME/$PROJECT_NAME/environment.yml $host:~/ &
         ssh $host '~/tpu_vm_setup.sh' &
     done
     wait &> /dev/null
 
     for host in $tpu_ips; do
-        scp $PROJECT_HOME/$PROJECT_NAME/tpu_vm_setup.sh $host:~/
-        scp $PROJECT_HOME/$PROJECT_NAME/environment.yml $host:~/
+        scp $PROJECT_HOME/$PROJECT_NAME/tpu_vm_setup.sh $host:~/ &
+        scp $PROJECT_HOME/$PROJECT_NAME/environment.yml $host:~/ &
         ssh $host '~/tpu_vm_setup.sh' &
+    done
+    wait &> /dev/null
+
+    for host in $tpu_ips; do
+        ssh $host 'rm -rf ~/environment.yml ~/tpu_vm_setup.sh' &
     done
     wait &> /dev/null
 }
@@ -62,15 +67,17 @@ function _gcs_setup {
     tpu_name=$3
     key_name=$4
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
-        scp ~/.config/gcloud/$key_name.json $host:~/.config/gcloud/
+        ssh $host 'gcloud init' &
+        scp ~/.config/gcloud/$key_name.json $host:~/.config/gcloud/ &
         ssh $host 'gcloud auth activate-service-account --key-file=$PWD/.config/gcloud/'$key_name'.json' &
     done
     wait &> /dev/null
 
     for host in $tpu_ips; do
-        scp ~/.config/gcloud/$key_name.json $host:~/.config/gcloud/
+        ssh $host 'gcloud init' &
+        scp ~/.config/gcloud/$key_name.json $host:~/.config/gcloud/ &
         ssh $host 'gcloud auth activate-service-account --key-file=$PWD/.config/gcloud/'$key_name'.json' &
     done
     wait &> /dev/null
@@ -81,7 +88,7 @@ function _tpu_check {
     tpu_project=$2
     tpu_name=$3
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         ssh $host 'tmux capture-pane -pt launch'
     done
@@ -92,7 +99,7 @@ function _tpu_copy {
     tpu_project=$2
     tpu_name=$3
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         rsync -avPI --exclude=data --exclude=__pycache__ --exclude=.git $PROJECT_HOME/$PROJECT_NAME $host:~/ &
     done
@@ -111,7 +118,7 @@ function _clear_hf_cache {
     tpu_project=$2
     tpu_name=$3
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         ssh $host 'rm -rf ~/.cache/huggingface/transformers/ && mkdir ~/.cache/huggingface/transformers/' &
     done
@@ -124,7 +131,7 @@ function _tpu_stop {
     tpu_project=$2
     tpu_name=$3
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         ssh $host 'tmux kill-session -t launch ; pkill -9 python' &
     done
@@ -142,7 +149,7 @@ function _tpu_launch {
         return 1
     fi
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         echo "tmux new -d -s launch \"PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command\""
         ssh $host "tmux new -d -s launch \"PYTHONPATH=~/$PROJECT_NAME/src/ ~/miniconda3/envs/JaxSeq/bin/python ~/$PROJECT_NAME/scripts/$command\"" &
@@ -172,7 +179,7 @@ function _tpu_ssh {
         return 1
     fi
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         ssh $host "$command" &
     done
@@ -184,7 +191,7 @@ function _tpu_reboot {
     tpu_project=$2
     tpu_name=$3
 
-    tpu_ips=$(_tpu_ips $tpu_zone $tpu_project $tpu_name)
+    tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
         ssh $host 'sudo reboot' &
     done
@@ -247,7 +254,7 @@ function tpu {
         _tpu_ssh $tpu_zone $tpu_project $3 "$4"
     elif [ "$2" = "reboot" ]; then
         _tpu_reboot $tpu_zone $tpu_project $3
-    elif [ "$2" = "gsetup" ]; then
+    elif [ "$2" = "gcssetup" ]; then
         _gcs_setup $tpu_zone $tpu_project $3 $4
     elif [ "$2" = "clear_hf" ]; then
         _clear_hf_cache $tpu_zone $tpu_project $3

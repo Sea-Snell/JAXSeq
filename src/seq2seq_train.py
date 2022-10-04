@@ -102,7 +102,7 @@ def train_loop(
     
     # initalize wandb
     if use_wandb and jax.process_index() == 0:
-        wandb_run = wandb.init(project=wandb_project, name=wandb_run_name, config=wandb_config, reinit=True)
+        wandb.init(project=wandb_project, name=wandb_run_name, config=wandb_config, reinit=True)
 
     # initalize training loop state
     train_logs = []
@@ -200,7 +200,7 @@ def train_loop(
 
     # stop wandb
     if use_wandb and jax.process_index() == 0:
-        wandb_run.finish()
+        wandb.finish()
     
     inference = inference.set_params(trainer.params)
     return trainer, inference
