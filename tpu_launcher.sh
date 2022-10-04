@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_HOME=/Users/charliesnell/current_projects
+PROJECT_HOME=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/..
 PROJECT_NAME=JAXSeq
 
 function _tpu_ips {
