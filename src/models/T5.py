@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 import jax.numpy as jnp
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 from transformers_patch.t5_remat import FlaxT5ForConditionalGeneration
@@ -103,14 +103,18 @@ def load_t5_from_random(model_str, dtype, pad_token_id, n_tokens, gradient_check
 
 def load_t5_model(model_str: str, from_pretrained: bool, checkpoint_path: Optional[str], 
                   use_fp16: bool, tokenizer: PreTrainedTokenizer, gradient_checkpoint: bool, 
-                  seed: int, gcloud_project: Optional[str]=None):
+                  seed: int, gcloud_project: Optional[str]=None, gcloud_token: Optional[Any]=None):
     # make n_tokens a power of 2, so parameters can be shareded evanely across devices
     n_tokens=int(2**math.ceil(math.log2(len(tokenizer))))
 
     with jax.default_device(jax.devices('cpu')[0]):
         dtype = get_dtype(use_fp16)
         if checkpoint_path is not None:
-            checkpoint_path, tmp_dir = handle_checkpoint_path(checkpoint_path, gcloud_project=gcloud_project)
+            checkpoint_path, tmp_dir = handle_checkpoint_path(
+                checkpoint_path, 
+                gcloud_project=gcloud_project, 
+                gcloud_token=gcloud_token
+            )
             model, params = load_t5_from_local_path(checkpoint_path, dtype, 
                                                     tokenizer.pad_token_id, 
                                                     n_tokens, gradient_checkpoint)

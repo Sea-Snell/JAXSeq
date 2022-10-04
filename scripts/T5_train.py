@@ -106,6 +106,7 @@ def main(
         gradient_checkpoint=gradient_checkpoint, 
         seed=0, 
         gcloud_project=gcloud_project, 
+        gcloud_token=gcloud_token_path, 
     )
 
     optim = optax.MultiSteps(
