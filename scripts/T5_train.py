@@ -97,10 +97,14 @@ def main(
         trunc_outputs_last=trunc_outputs_last, 
     )
 
+    if checkpoint_is_sharded and checkpoint_path is not None:
+        tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
+        checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
+    
     model, params, shard_rules = load_t5_model(
         model_str=model_name, 
         from_pretrained=True, 
-        checkpoint_path=os.path.join(checkpoint_path, 'shard_%d' % (jax.process_index())) if checkpoint_is_sharded and checkpoint_path is not None else checkpoint_path, 
+        checkpoint_path=checkpoint_path, 
         use_fp16=jax.default_backend() == 'tpu', 
         tokenizer=tokenizer, 
         gradient_checkpoint=gradient_checkpoint, 
