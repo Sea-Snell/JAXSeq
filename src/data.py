@@ -36,7 +36,7 @@ def block_sequences(sequences: Union[List[List[int]], np.ndarray, List[np.ndarra
         else:
             new_toks = sequences[i][-max_len:]
         full_sequences.append(pad_sequence(np.asarray(new_toks), max_len, pad_value, pad_right=pad_right))
-    
+    breakpoint()
     return np.asarray(full_sequences, dtype=dtype)
 
 # basic dataset types

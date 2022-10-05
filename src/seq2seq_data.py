@@ -34,6 +34,7 @@ class Seq2SeqDataset(Dataset):
         in_tokens = list(map(lambda x: tokenizer.encode(x[0]), str_list))
         out_tokens = list(map(lambda x: tokenizer.encode(x[1]), str_list))
         
+        breakpoint()
         in_tokens = block_sequences(
             in_tokens, 
             max_len=max_input_length, 
