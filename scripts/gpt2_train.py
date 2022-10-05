@@ -4,7 +4,7 @@ from transformers import T5Tokenizer, GPT2Tokenizer
 from models.gpt2 import load_gpt2_model
 import jax
 import optax
-from seq2seq import Seq2SeqInference, load_dec_inference, load_enc_dec_trainer, load_enc_dec_inference
+from seq2seq import Seq2SeqInference, load_dec_inference, load_dec_trainer
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
 import json
@@ -73,6 +73,7 @@ def main(
     open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
     tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
 
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
@@ -137,7 +138,7 @@ def main(
     else:
         optim_state, param_spec, optim_state_spec = optim.init(params), None, None
 
-    trainer = load_dec_inference(
+    trainer = load_dec_trainer(
         model=model, 
         params=params, 
         param_spec=param_spec, 
