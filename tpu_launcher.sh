@@ -101,13 +101,13 @@ function _tpu_copy {
 
     tpu_ips=($(_tpu_ips $tpu_zone $tpu_project $tpu_name))
     for host in $tpu_ips; do
-        rsync -avPI --exclude=data --exclude=__pycache__ --exclude=.git $PROJECT_HOME/$PROJECT_NAME $host:~/ &
+        rsync -avPI --exclude=data --evclude=outputs --exclude=__pycache__ --exclude=.git $PROJECT_HOME/$PROJECT_NAME $host:~/ &
     done
     wait &> /dev/null
     sleep 1s
 
     for host in $tpu_ips; do
-        rsync -avPI --exclude=data --exclude=__pycache__ --exclude=.git $PROJECT_HOME/$PROJECT_NAME $host:~/ &
+        rsync -avPI --exclude=data --exclude=outputs --exclude=__pycache__ --exclude=.git $PROJECT_HOME/$PROJECT_NAME $host:~/ &
     done
     wait &> /dev/null
     sleep 1s
