@@ -56,6 +56,7 @@ def main(
     open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
     tokenizer = T5Tokenizer.from_pretrained(model_name)
+    tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
 
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
