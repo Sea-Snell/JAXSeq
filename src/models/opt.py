@@ -114,5 +114,6 @@ def load_opt_model(model_str: str, from_pretrained: bool, checkpoint_path: Optio
                                                  tokenizer.pad_token_id, 
                                                  n_tokens, gradient_checkpoint, 
                                                  seed)
+        params = model.to_fp32(params)
     shard_rules = _get_partition_rules_opt()
     return HuggingfacePjitModelDescription(model, params, shard_rules)

@@ -11,8 +11,8 @@ Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pji
 ### **1. pull from github**
 
 ``` bash
-git clone https://github.com/Sea-Snell/JaxSeq.git
-cd JaxSeq
+git clone https://github.com/Sea-Snell/JAXSeq.git
+cd JAXSeq
 export PYTHONPATH=${PWD}/src/
 ```
 

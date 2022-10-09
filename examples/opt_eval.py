@@ -69,6 +69,7 @@ def main(
         tokenizer, 
         max_input_length=max_input_length, 
         max_output_length=max_output_length, 
+        pad_inputs_right=False, 
         trunc_inputs_last=trunc_inputs_last, 
         trunc_outputs_last=trunc_outputs_last, 
     )

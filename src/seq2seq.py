@@ -38,7 +38,7 @@ class Seq2SeqTrainer(Trainer):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         in_tokens = [self.tokenizer.encode(item) for item in in_strs]
-        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32)
+        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
 
         if out_str_preproc is not None:
             out_strs = list(map(out_str_preproc, out_strs))
@@ -67,8 +67,7 @@ class Seq2SeqInference(Inference):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         tokens = [self.tokenizer.encode(item) for item in in_strs]
-        tokens = block_sequences(tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32)
-        
+        tokens = block_sequences(tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
         outputs = self.generate(jnp.asarray(tokens), rng_key, **generation_kwargs)
 
         out_strs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
@@ -90,7 +89,7 @@ class Seq2SeqInference(Inference):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         in_tokens = [self.tokenizer.encode(item) for item in in_strs]
-        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32)
+        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
 
         if out_str_preproc is not None:
             out_strs = list(map(out_str_preproc, out_strs))
@@ -114,7 +113,7 @@ class Seq2SeqInference(Inference):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         in_tokens = [self.tokenizer.encode(item) for item in in_strs]
-        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32)
+        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
 
         if out_str_preproc is not None:
             out_strs = list(map(out_str_preproc, out_strs))
