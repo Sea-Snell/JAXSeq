@@ -190,7 +190,7 @@ def main(
             max_input_length=max_input_length, 
             in_str_preproc=None, 
             out_str_postproc=None, 
-            max_length=max_output_length, 
+            max_length=max_input_length+max_output_length, 
             do_sample=inference_do_sample, 
             num_beams=1, 
             pad_token_id=tokenizer.pad_token_id, 

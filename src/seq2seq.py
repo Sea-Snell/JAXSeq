@@ -69,6 +69,8 @@ class Seq2SeqInference(Inference):
         tokens = [self.tokenizer.encode(item) for item in in_strs]
         tokens = block_sequences(tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
         outputs = self.generate(jnp.asarray(tokens), rng_key, **generation_kwargs)
+        # since we have to pad the embeddings for model parallel training, sometimes it can generate invalid tokens, convert these to pad.
+        outputs = jnp.where(outputs >= len(self.tokenizer), self.tokenizer.pad_token_id, outputs)
 
         out_strs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
         if out_str_postproc is not None:
@@ -423,7 +425,7 @@ def load_dec_inference(
         if do_pjit:
             in_tokens = with_sharding_constraint(in_tokens, data_shard_spec.tokens_spec)
         attn_mask = (in_tokens != pad_id).astype(jnp.int32)
-        out_sequences = model.generate(in_tokens, attention_mask=attn_mask, params=params, prng_key=rng, **kwargs).sequences[in_tokens.shape[1]:]
+        out_sequences = model.generate(in_tokens, attention_mask=attn_mask, params=params, prng_key=rng, **kwargs).sequences[:, in_tokens.shape[1]:]
         if do_pjit:
             out_sequences = with_sharding_constraint(out_sequences, data_shard_spec.tokens_spec)
         return out_sequences

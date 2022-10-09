@@ -54,6 +54,9 @@ We provide some example scripts for training and evaluating GPT2, GPTJ, OPT, and
 
 This code was largely tested, developed, and optimized for use on TPU-pods, though it should also work well on GPU clusters.
 
+*NOTE: The T5 examples are the most stable; some of the others I still need to more extensively test.*
+
 ## Google Cloud Buckets
 
 To further support TPU workflows the example scripts provide functionality for uploading / downloading data and or checkpoints to / from Google Cloud Storage buckets. This can be achieved by prefixing the path with `gcs://`. And depending on the permissions of the bucket, you may need to specify the google cloud project and provide an authentication token.
+
