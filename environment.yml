@@ -32,6 +32,6 @@ dependencies:
   - openai==0.22.1
   - scikit-image==0.19.3
   - dill==0.3.5.1
-  - dcargs==0.2.6
+  - tyro==0.3.23
   - rouge-score==0.1.2
   - gcsfs==2022.8.2

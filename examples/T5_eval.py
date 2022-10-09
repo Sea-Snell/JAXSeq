@@ -15,7 +15,7 @@ from functools import partial
 from seq2seq_train import train_loop, eval_loss
 from evaluate import generate_language, compute_metrics
 import os
-import dcargs
+import tyro
 
 def main(
     model_name: str, # google/t5-xxl-lm-adapt [11B]
@@ -148,4 +148,4 @@ def main(
         print(evaluator(inference))
 
 if __name__ == "__main__":
-    dcargs.cli(main)
+    tyro.cli(main)

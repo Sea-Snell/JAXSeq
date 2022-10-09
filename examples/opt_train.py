@@ -18,7 +18,7 @@ from evaluate import generate_language, compute_metrics
 import os
 import pickle as pkl
 import tree
-import dcargs
+import tyro
 
 def main(
     exp_name: Optional[str], 
@@ -244,4 +244,4 @@ def main(
         )
 
 if __name__ == "__main__":
-    dcargs.cli(main)
+    tyro.cli(main)

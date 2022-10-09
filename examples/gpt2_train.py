@@ -1,10 +1,10 @@
 import random
 from typing import Any, Optional
-from transformers import T5Tokenizer
-from models.T5 import load_t5_model, prepend_pad
+from transformers import T5Tokenizer, GPT2Tokenizer
+from models.gpt2 import load_gpt2_model
 import jax
 import optax
-from seq2seq import Seq2SeqInference, load_enc_dec_trainer, load_enc_dec_inference
+from seq2seq import Seq2SeqInference, load_dec_inference, load_dec_trainer
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
 import json
@@ -18,11 +18,11 @@ from evaluate import generate_language, compute_metrics
 import os
 import pickle as pkl
 import tree
-import dcargs
+import tyro
 
 def main(
     exp_name: Optional[str], 
-    model_name: str, # google/t5-xxl-lm-adapt [11B]
+    model_name: str, # gpt2, gpt2-medium, gpt2-large, gpt2-xl [1.5B]
     data_json_path: str, # should be dict of shape {'train': [{'in_text', 'out_text'}, ...], 'eval': [{'in_text', 'out_text'}, ...]}
     
     /,  # Mark the end of positional arguments.
@@ -30,7 +30,7 @@ def main(
     checkpoint_path: Optional[str]=None, 
     checkpoint_is_sharded: bool=True, 
 
-    outputs_path: Optional[str]='outputs/T5_train', 
+    outputs_path: Optional[str]='outputs/gpt2_train', 
 
     use_wandb: bool=False, 
     wandb_project: Optional[str]=None, 
@@ -61,7 +61,7 @@ def main(
     eval_every: int=256, 
 
     inference_bsize: int=32, 
-    inference_do_sample: bool=True, 
+    inference_do_sample: bool=False, 
 
     gcloud_project: Optional[str]=None, 
     gcloud_token_path: Optional[str]=None, 
@@ -72,7 +72,8 @@ def main(
     from utils.gcs_manager import open_pp as open
     open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
-    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
 
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
@@ -80,7 +81,7 @@ def main(
     raw_train_data, raw_eval_data = raw_data['train'], raw_data['eval']
     
     train_data = Seq2SeqDataset.from_str_list(
-        list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_train_data)), 
+        list(map(lambda x: (x['in_text'], x['out_text']), raw_train_data)), 
         tokenizer, 
         max_input_length=max_input_length, 
         max_output_length=max_output_length, 
@@ -89,7 +90,7 @@ def main(
     )
 
     eval_data = Seq2SeqDataset.from_str_list(
-        list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_eval_data)), 
+        list(map(lambda x: (x['in_text'], x['out_text']), raw_eval_data)), 
         tokenizer, 
         max_input_length=max_input_length, 
         max_output_length=max_output_length, 
@@ -100,8 +101,8 @@ def main(
     if checkpoint_is_sharded and checkpoint_path is not None:
         tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
         checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
-    
-    model, params, shard_rules = load_t5_model(
+
+    model, params, shard_rules = load_gpt2_model(
         model_str=model_name, 
         from_pretrained=True, 
         checkpoint_path=checkpoint_path, 
@@ -141,7 +142,7 @@ def main(
     else:
         optim_state, param_spec, optim_state_spec = optim.init(params), None, None
 
-    trainer = load_enc_dec_trainer(
+    trainer = load_dec_trainer(
         model=model, 
         params=params, 
         param_spec=param_spec, 
@@ -152,7 +153,7 @@ def main(
         do_pjit=do_pjit, 
     )
 
-    inference = load_enc_dec_inference(
+    inference = load_dec_inference(
         model=model, 
         params=params, 
         param_spec=param_spec, 
@@ -243,4 +244,4 @@ def main(
         )
 
 if __name__ == "__main__":
-    dcargs.cli(main)
+    tyro.cli(main)

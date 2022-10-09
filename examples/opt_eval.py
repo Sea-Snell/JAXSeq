@@ -1,9 +1,10 @@
 import random
 from typing import Any, Optional
-from transformers import GPT2Tokenizer
-from models.gpt2 import load_gpt2_model
+from transformers import AutoTokenizer
+from models.gptj import load_gptj_model
 import jax
 import optax
+from models.opt import load_opt_model
 from seq2seq import Seq2SeqInference, load_dec_inference
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
@@ -18,10 +19,10 @@ from evaluate import generate_language, compute_metrics
 import os
 import pickle as pkl
 import tree
-import dcargs
+import tyro
 
 def main(
-    model_name: str, # gpt2, gpt2-medium, gpt2-large, gpt2-xl [1.5B]
+    model_name: str, 
     data_json_path: str, # should be dict of shape {'train': [{'in_text', 'out_text'}, ...], 'eval': [{'in_text', 'out_text'}, ...]}
     
     /,  # Mark the end of positional arguments.
@@ -55,7 +56,7 @@ def main(
     from utils.gcs_manager import open_pp as open
     open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
 
     with open(convert_path(data_json_path), 'r') as f:
@@ -76,7 +77,7 @@ def main(
         tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
         checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
 
-    model, params, shard_rules = load_gpt2_model(
+    model, params, shard_rules = load_opt_model(
         model_str=model_name, 
         from_pretrained=True, 
         checkpoint_path=checkpoint_path, 
@@ -152,4 +153,4 @@ def main(
         print(evaluator(inference))
 
 if __name__ == "__main__":
-    dcargs.cli(main)
+    tyro.cli(main)
