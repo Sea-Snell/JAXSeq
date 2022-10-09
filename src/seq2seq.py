@@ -191,6 +191,24 @@ def dec_loss(
     loss = token_losses.sum() / decoder_attention_mask.sum()
     return loss, {'loss': loss}
 
+def opt_dec_loss(
+    model: FlaxPreTrainedModel, 
+    input_ids: jnp.ndarray, 
+    decoder_input_ids: jnp.ndarray, 
+    attention_mask: jnp.ndarray, 
+    decoder_attention_mask: jnp.ndarray, 
+    params: PyTree, 
+    rng: Optional[KeyArray], 
+    train: bool, 
+) -> jnp.ndarray:
+    full_input_ids = jnp.concatenate((input_ids, decoder_input_ids,), axis=1)
+    full_attn_mask = jnp.concatenate((attention_mask, decoder_attention_mask), axis=1)
+    logits = model(input_ids=full_input_ids, attention_mask=full_attn_mask, 
+                   params=params, dropout_rng=rng, deterministic=(not train)).logits
+    token_losses = softmax_cross_entropy_with_integer_labels(logits[:, (input_ids.shape[1]-1):-1, :], decoder_input_ids) * decoder_attention_mask
+    loss = token_losses.sum() / decoder_attention_mask.sum()
+    return loss, {'loss': loss}
+
 # load model parallel encdec jax trainer
 
 def load_enc_dec_trainer(

@@ -60,28 +60,30 @@ def load_opt_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_
     emb = jnp.zeros((n_tokens, model.config.hidden_size))
     emb = emb.at[:model.config.vocab_size, :].set(params["model"]["decoder"]["embed_tokens"]['embedding'])
     params["model"]["decoder"]["embed_tokens"]['embedding'] = emb
-    lm_head_kernel = jnp.zeros((model.config.hidden_size, n_tokens))
-    lm_head_kernel = lm_head_kernel.at[:, :model.config.vocab_size].set(params['model']["lm_head"]["kernel"])
-    params['model']["lm_head"]["kernel"] = lm_head_kernel
+    if 'lm_head' in params['model']:
+        lm_head_kernel = jnp.zeros((model.config.hidden_size, n_tokens))
+        lm_head_kernel = lm_head_kernel.at[:, :model.config.vocab_size].set(params['model']["lm_head"]["kernel"])
+        params['model']["lm_head"]["kernel"] = lm_head_kernel
     
     config = OPTConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
-                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                        max_position_embeddings=4096-2)
     model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
 def load_opt_from_local_path(model_path, dtype, pad_token_id, n_tokens, gradient_checkpoint):
-    params = from_path(OPTForCausalLM, model_path)
+    params = from_path(FlaxOPTForCausalLM, model_path)
     config = OPTConfig.from_pretrained(model_path, vocab_size=n_tokens, dtype=dtype, 
                                         pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
-    model = OPTForCausalLM(config, _do_init=False, dtype=dtype)
+    model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
 def load_opt_from_random(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint, seed):
     config = OPTConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
                                         pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
-    model = OPTForCausalLM(config, _do_init=True, dtype=dtype, seed=seed)
+    model = FlaxOPTForCausalLM(config, _do_init=True, dtype=dtype, seed=seed)
     params = model.params
-    model = OPTForCausalLM(config, _do_init=False, dtype=dtype)
+    model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
 def load_opt_model(model_str: str, from_pretrained: bool, checkpoint_path: Optional[str], 

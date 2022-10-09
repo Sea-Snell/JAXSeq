@@ -384,10 +384,10 @@ class FlaxOPTDecoderLayerCollection(nn.Module):
 
             layer_outputs = decoder_layer(
                 hidden_states,
-                attention_mask=attention_mask,
-                init_cache=init_cache,
-                output_attentions=output_attentions,
-                deterministic=deterministic,
+                attention_mask,
+                init_cache,
+                output_attentions,
+                deterministic,
             )
 
             hidden_states = layer_outputs[0]

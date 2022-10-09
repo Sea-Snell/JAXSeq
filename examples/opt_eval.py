@@ -5,7 +5,7 @@ from models.gptj import load_gptj_model
 import jax
 import optax
 from models.opt import load_opt_model
-from seq2seq import Seq2SeqInference, load_dec_inference
+from seq2seq import Seq2SeqInference, load_dec_inference, opt_dec_loss
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
 import json
@@ -111,6 +111,7 @@ def main(
         param_spec=param_spec, 
         tokenizer=tokenizer, 
         do_pjit=do_pjit, 
+        loss_fn=opt_dec_loss, 
     )
 
     def evaluator(inference: Seq2SeqInference):

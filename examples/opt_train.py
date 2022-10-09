@@ -4,7 +4,7 @@ from transformers import T5Tokenizer, GPT2Tokenizer
 from models.opt import load_opt_model
 import jax
 import optax
-from seq2seq import Seq2SeqInference, load_dec_inference, load_dec_trainer
+from seq2seq import Seq2SeqInference, load_dec_inference, load_dec_trainer, opt_dec_loss
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
 import json
@@ -30,7 +30,7 @@ def main(
     checkpoint_path: Optional[str]=None, 
     checkpoint_is_sharded: bool=True, 
 
-    outputs_path: Optional[str]='outputs/gpt2_train', 
+    outputs_path: Optional[str]='outputs/opt_train', 
 
     use_wandb: bool=False, 
     wandb_project: Optional[str]=None, 
@@ -151,6 +151,7 @@ def main(
         optim_state=optim_state, 
         optim_state_spec=optim_state_spec, 
         do_pjit=do_pjit, 
+        loss_fn=opt_dec_loss, 
     )
 
     inference = load_dec_inference(
@@ -159,6 +160,7 @@ def main(
         param_spec=param_spec, 
         tokenizer=tokenizer, 
         do_pjit=do_pjit, 
+        loss_fn=opt_dec_loss, 
     )
 
     def evaluator(inference: Seq2SeqInference):

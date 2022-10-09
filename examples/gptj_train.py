@@ -30,7 +30,7 @@ def main(
     checkpoint_path: Optional[str]=None, 
     checkpoint_is_sharded: bool=True, 
 
-    outputs_path: Optional[str]='outputs/gpt2_train', 
+    outputs_path: Optional[str]='outputs/gptj_train', 
 
     use_wandb: bool=False, 
     wandb_project: Optional[str]=None, 
