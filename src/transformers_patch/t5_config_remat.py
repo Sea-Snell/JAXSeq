@@ -114,7 +114,7 @@ class T5Config(PretrainedConfig):
         self.initializer_factor = initializer_factor
         self.feed_forward_proj = feed_forward_proj
         self.use_cache = use_cache
-        self.gradient_checkpointing=gradient_checkpointing
+        self.gradient_checkpointing = gradient_checkpointing
 
         act_info = self.feed_forward_proj.split("-")
         self.dense_act_fn = act_info[-1]

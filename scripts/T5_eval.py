@@ -1,27 +1,24 @@
 import random
 from typing import Any, Optional
-from transformers import GPT2Tokenizer
-from models.gpt2 import load_gpt2_model
+from transformers import T5Tokenizer
+from models.T5 import load_t5_model, prepend_pad
 import jax
-import optax
-from seq2seq import Seq2SeqInference, load_dec_inference
+from seq2seq import Seq2SeqInference, load_enc_dec_trainer, load_enc_dec_inference
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
 import json
 import contextlib
 import numpy as np
 from jax.experimental.maps import Mesh
-from shard import shard_optim_and_params, OptimType, shard_params
+from shard import shard_params
 from functools import partial
 from seq2seq_train import train_loop, eval_loss
 from evaluate import generate_language, compute_metrics
 import os
-import pickle as pkl
-import tree
 import dcargs
 
 def main(
-    model_name: str, # gpt2, gpt2-medium, gpt2-large, gpt2-xl [1.5B]
+    model_name: str, # google/t5-xxl-lm-adapt [11B]
     data_json_path: str, # should be dict of shape {'train': [{'in_text', 'out_text'}, ...], 'eval': [{'in_text', 'out_text'}, ...]}
     
     /,  # Mark the end of positional arguments.
@@ -55,8 +52,7 @@ def main(
     from utils.gcs_manager import open_pp as open
     open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-    tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
 
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
@@ -64,7 +60,7 @@ def main(
     raw_eval_data = raw_data['eval']
 
     eval_data = Seq2SeqDataset.from_str_list(
-        list(map(lambda x: (x['in_text'], x['out_text']), raw_eval_data)), 
+        list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_eval_data)), 
         tokenizer, 
         max_input_length=max_input_length, 
         max_output_length=max_output_length, 
@@ -75,8 +71,8 @@ def main(
     if checkpoint_is_sharded and checkpoint_path is not None:
         tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
         checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
-
-    model, params, shard_rules = load_gpt2_model(
+    
+    model, params, shard_rules = load_t5_model(
         model_str=model_name, 
         from_pretrained=True, 
         checkpoint_path=checkpoint_path, 
@@ -100,11 +96,11 @@ def main(
     # shard params and optimizer
     if do_pjit:
         params, param_spec = shard_params(partial(model.init_weights, input_shape=(1, 1)), 
-                                                  params, shard_rules, mesh)
+                                                                             params, shard_rules, mesh)
     else:
         param_spec = None
 
-    inference = load_dec_inference(
+    inference = load_enc_dec_inference(
         model=model, 
         params=params, 
         param_spec=param_spec, 
@@ -146,7 +142,7 @@ def main(
         # print('\n=====\n=====\n'.join(random.sample(list(map(lambda x: str((x['prompt'], x['generation'],)), generation_data)), 10)))
         reference_metrics = compute_metrics(generation_data)
 
-        return {'loss_metrics': loss_metrics, 'reference_metrics': reference_metrics}
+        return loss_metrics['loss'], {'loss_metrics': loss_metrics, 'reference_metrics': reference_metrics}
     
     with mesh:
         print(evaluator(inference))

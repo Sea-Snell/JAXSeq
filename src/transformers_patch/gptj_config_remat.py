@@ -127,7 +127,7 @@ class GPTJConfig(PretrainedConfig):
         self.initializer_range = initializer_range
         self.scale_attn_weights = scale_attn_weights
         self.use_cache = use_cache
-        self.gradient_checkpointing=gradient_checkpointing
+        self.gradient_checkpointing = gradient_checkpointing
 
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id

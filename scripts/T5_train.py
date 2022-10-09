@@ -22,7 +22,7 @@ import dcargs
 
 def main(
     exp_name: Optional[str], 
-    model_name: str, 
+    model_name: str, # google/t5-xxl-lm-adapt [11B]
     data_json_path: str, # should be dict of shape {'train': [{'in_text', 'out_text'}, ...], 'eval': [{'in_text', 'out_text'}, ...]}
     
     /,  # Mark the end of positional arguments.
@@ -191,7 +191,7 @@ def main(
             pad_token_id=tokenizer.pad_token_id, 
             eos_token_id=tokenizer.eos_token_id, 
         )
-        print('\n=====\n=====\n'.join(random.sample(list(map(lambda x: str((x['prompt'], x['generation'],)), generation_data)), 10)))
+        # print('\n=====\n=====\n'.join(random.sample(list(map(lambda x: str((x['prompt'], x['generation'],)), generation_data)), 10)))
         reference_metrics = compute_metrics(generation_data)
 
         return loss_metrics['loss'], {'loss_metrics': loss_metrics, 'reference_metrics': reference_metrics}
