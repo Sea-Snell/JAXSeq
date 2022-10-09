@@ -47,8 +47,8 @@ python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-r
 We provide some example scripts for training and evaluating GPT2, GPTJ, OPT, and T5 models using JaxSeq. However you should feel free to build your own workflow for training. You can find these scripts in the `examples/` directory. Each script takes as input a json file which should be of shape:
 ``` json
 {
-'train': [{'in_text': 'something', 'out_text': 'something else'}, ...], 
-'eval': [{'in_text': 'something else else', 'out_text': 'something else else else'}, ...], 
+"train": [{"in_text": "something", "out_text": "something else"}, ...], 
+"eval": [{"in_text": "something else else", "out_text": "something else else else"}, ...], 
 }
 ```
 
