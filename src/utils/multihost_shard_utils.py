@@ -28,26 +28,3 @@ def host_param_shard(host_param_shapes, params, mesh_devices, mp_axis):
         mask = (param_shape_arr != host_shape_arr).astype(jnp.int32)
         return jax.lax.dynamic_slice(param, mask * host_shape_arr * shard_idx, host_shape_arr)
     return jax.tree_util.tree_map(split_param, host_param_shapes, params)
-
-# assumes mesh devices are the same as when the parameters were saved
-# TODO: Test this.
-def combine_host_param_shards(full_param_shapes, p_idx_to_shard_params: Dict[int, PyTree], mesh_devices, mp_axis):
-    p_idx_2_shard_idx = {}
-    for p_idx in p_idx_to_shard_params.keys():
-        p_idx_2_shard_idx[p_idx] = index_under_mesh(p_idx, mesh_devices, mp_axis)
-    
-    def empty_params(full_shape, shard_param):
-        return jnp.empty(full_shape, dtype=shard_param.dtype)
-    
-    full_params = jax.tree_util.tree_map(empty_params, full_param_shapes, next(p_idx_to_shard_params.values()))
-
-    def combine_param(empty_full_param, param_shard, shard_idx):
-        full_param_shape_arr = jnp.array(empty_full_param.shape, dtype=jnp.int32)
-        shard_shape_arr = jnp.array(param_shard.shape, dtype=jnp.int32)
-        mask = (full_param_shape_arr != shard_shape_arr).astype(jnp.int32)
-        return empty_full_param.at[(mask*shard_shape_arr*shard_idx):(mask*shard_shape_arr*(shard_idx+1))].set(param_shard)
-    
-    for real_p_idx, shard_idx in p_idx_2_shard_idx.items():
-        full_params = jax.tree_util.tree_map(combine_param, full_params, p_idx_to_shard_params[real_p_idx], shard_idx)
-    
-    return full_params
