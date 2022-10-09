@@ -2,9 +2,9 @@
 
 ## Overview
 
-Built on top of [HugigngFace](https://huggingface.co)'s [Transformers](https://github.com/huggingface/transformers) library, JaxSeq enables training very large language models in [Jax](https://jax.readthedocs.io/en/latest/). Currently it supports GPT2, GPTJ, T5, and OPT models. JaxSeq is designed to be light-weight and easily extensible. With the aim being to demonstrate a workflow for training large language models without with the heaft that is typical other existing frameworks.
+Built on top of [HuggingFace](https://huggingface.co)'s [Transformers](https://github.com/huggingface/transformers) library, JaxSeq enables training very large language models in [Jax](https://jax.readthedocs.io/en/latest/). Currently it supports GPT2, GPTJ, T5, and OPT models. JaxSeq is designed to be light-weight and easily extensible, with the aim being to demonstrate a workflow for training large language models without with the heaft that is typical other existing frameworks.
 
-Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pjit.html) function, you straightforwardly can train models with arbitrary model and data parellelism; you can trade-off these two as you like. You can also do model parallelism across multiple hosts. Support for gradient checkpointing, gradient accumulation, and bfloat16 training/inference is provided as well for memory efficiency.
+Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pjit.html) function, you can straightforwardly train models with arbitrary model and data parellelism; you can trade-off these two as you like. You can also do model parallelism across multiple hosts. Support for gradient checkpointing, gradient accumulation, and bfloat16 training/inference is provided as well for memory efficiency.
 
 ## installation
 
@@ -44,10 +44,16 @@ python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-r
 
 ## Workflow
 
-We provide some example scripts for training and evaluating GPT2, GPTJ, OPT, and T5 models using JaxSeq. However you should feel free to build your own workflow for training. You can find these scripts in the `examples/` directory. Each script takes as input a json file which should be of shape {'train': [{'in_text': 'something', 'out_text': 'something else'}, ...], 'eval': [{'in_text': 'something else else', 'out_text': 'something else else else'}, ...]}
+We provide some example scripts for training and evaluating GPT2, GPTJ, OPT, and T5 models using JaxSeq. However you should feel free to build your own workflow for training. You can find these scripts in the `examples/` directory. Each script takes as input a json file which should be of shape:
+``` json
+{
+'train': [{'in_text': 'something', 'out_text': 'something else'}, ...], 
+'eval': [{'in_text': 'something else else', 'out_text': 'something else else else'}, ...], 
+}
+```
 
 This code was largely tested, developed, and optimized for use on TPU-pods, though it should also work well on GPU clusters.
 
 ## Google Cloud Buckets
 
-Additionally, to further support TPU workflows the example scripts provide functionality for uploading checkpoints / downloading data to / from Google Cloud Storage buckets. This can be achieved by prefixing the path to the data / checkpoint with `gcs://`. And depending on the permissions of the bucket, you may need to specify the google cloud project and provide an authentication token.
+To further support TPU workflows the example scripts provide functionality for uploading / downloading data and or checkpoints to / from Google Cloud Storage buckets. This can be achieved by prefixing the path with `gcs://`. And depending on the permissions of the bucket, you may need to specify the google cloud project and provide an authentication token.
