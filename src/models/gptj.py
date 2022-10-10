@@ -36,7 +36,7 @@ def _get_partition_rules_gptj():
         (("lm_head", "bias"), P("mp")), 
     ]
 
-def load_gptj_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint):
+def load_gptj_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
     model, params = FlaxGPTJForCausalLM.from_pretrained(model_str, _do_init=False, dtype=dtype, pad_token_id=pad_token_id)
     
     # pad embeddings
@@ -51,20 +51,23 @@ def load_gptj_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient
     params["lm_head"]["bias"] = lm_head_bias
     
     config = GPTJConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
-                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                        n_real_tokens=n_real_tokens)
     model = FlaxGPTJForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_gptj_from_local_path(model_path, dtype, pad_token_id, n_tokens, gradient_checkpoint):
+def load_gptj_from_local_path(model_path, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
     params = from_path(FlaxGPTJForCausalLM, model_path)
     config = GPTJConfig.from_pretrained(model_path, vocab_size=n_tokens, dtype=dtype, 
-                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                        n_real_tokens=n_real_tokens)
     model = FlaxGPTJForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_gptj_from_random(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint, seed):
+def load_gptj_from_random(model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint, seed):
     config = GPTJConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
-                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                        n_real_tokens=n_real_tokens)
     model = FlaxGPTJForCausalLM(config, _do_init=True, dtype=dtype, seed=seed)
     params = model.params
     model = FlaxGPTJForCausalLM(config, _do_init=False, dtype=dtype)
@@ -73,6 +76,8 @@ def load_gptj_from_random(model_str, dtype, pad_token_id, n_tokens, gradient_che
 def load_gptj_model(model_str: str, from_pretrained: bool, checkpoint_path: Optional[str], 
                     use_fp16: bool, tokenizer: PreTrainedTokenizer, gradient_checkpoint: bool, 
                     seed: int, gcloud_project: Optional[str]=None, gcloud_token: Optional[Any]=None):
+    # pad token should be last token
+    assert tokenizer.pad_token_id == (len(tokenizer)-1)
     # make n_tokens a power of 2, so parameters can be shareded evanely across devices
     n_tokens=int(2**math.ceil(math.log2(len(tokenizer))))
 
@@ -86,17 +91,19 @@ def load_gptj_model(model_str: str, from_pretrained: bool, checkpoint_path: Opti
             )
             model, params = load_gptj_from_local_path(checkpoint_path, dtype, 
                                                       tokenizer.pad_token_id, 
-                                                      n_tokens, gradient_checkpoint)
+                                                      n_tokens, len(tokenizer)-1, 
+                                                      gradient_checkpoint)
             if tmp_dir is not None:
                 tmp_dir.cleanup()
         elif from_pretrained:
             model, params = load_gptj_from_pretrained(model_str, dtype, 
                                                       tokenizer.pad_token_id, 
-                                                      n_tokens, gradient_checkpoint)
+                                                      n_tokens, len(tokenizer)-1, 
+                                                      gradient_checkpoint)
         else:
             model, params = load_gptj_from_random(model_str, dtype, 
                                                   tokenizer.pad_token_id, 
-                                                  n_tokens, gradient_checkpoint, 
-                                                  seed)
+                                                  n_tokens, len(tokenizer)-1, 
+                                                  gradient_checkpoint, seed)
     shard_rules = _get_partition_rules_gptj()
     return HuggingfacePjitModelDescription(model, params, shard_rules)

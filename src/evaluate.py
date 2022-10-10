@@ -22,7 +22,7 @@ def generate_language(
     assert len(prompts) == len(references)
 
     batches = []
-    for i in range(len(prompts)):
+    for i in range(0, len(prompts), bsize):
         batches.append((prompts[i:(i+bsize)], references[i:(i+bsize)],))
 
     all_generations = []

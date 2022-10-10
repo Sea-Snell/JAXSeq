@@ -110,6 +110,7 @@ class GPTJConfig(PretrainedConfig):
         eos_token_id=50256,
         tie_word_embeddings=False,
         gradient_checkpointing=True,
+        n_real_tokens=None, 
         **kwargs
     ):
         self.vocab_size = vocab_size
@@ -128,6 +129,9 @@ class GPTJConfig(PretrainedConfig):
         self.scale_attn_weights = scale_attn_weights
         self.use_cache = use_cache
         self.gradient_checkpointing = gradient_checkpointing
+        self.n_real_tokens = n_real_tokens
+        if self.n_real_tokens is None:
+            self.n_real_tokens = self.vocab_size
 
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id
