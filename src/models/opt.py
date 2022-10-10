@@ -40,14 +40,15 @@ def _get_partition_rules_opt():
         (("model", "lm_head", "kernel"), P(None, "mp")), 
     ]
 
-def load_opt_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint):
+def load_opt_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
     partitioned_models = ['facebook/opt-6.7b', 'facebook/opt-13b', 'facebook/opt-30b', 'facebook/opt-66b']
     if model_str in partitioned_models:
         # have to load through pytorch and convert weights manually due to bug with transformers for partitioned weights
         # see: https://github.com/huggingface/transformers/pull/18170
         pytorch_model = OPTForCausalLM.from_pretrained(model_str)
         config = OPTConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
-                                           pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                           pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                           n_real_tokens=n_real_tokens)
         model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype, pad_token_id=pad_token_id)
         params = convert_pytorch_state_dict_to_flax(pytorch_model.state_dict(), model)
     else:
@@ -67,20 +68,22 @@ def load_opt_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_
     
     config = OPTConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
                                         pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
-                                        max_position_embeddings=4096-2)
+                                        max_position_embeddings=4096-2, n_real_tokens=n_real_tokens)
     model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_opt_from_local_path(model_path, dtype, pad_token_id, n_tokens, gradient_checkpoint):
+def load_opt_from_local_path(model_path, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
     params = from_path(FlaxOPTForCausalLM, model_path)
     config = OPTConfig.from_pretrained(model_path, vocab_size=n_tokens, dtype=dtype, 
-                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                        n_real_tokens=n_real_tokens)
     model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_opt_from_random(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint, seed):
+def load_opt_from_random(model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint, seed):
     config = OPTConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
-                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint)
+                                        pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
+                                        n_real_tokens=n_real_tokens)
     model = FlaxOPTForCausalLM(config, _do_init=True, dtype=dtype, seed=seed)
     params = model.params
     model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
@@ -102,18 +105,25 @@ def load_opt_model(model_str: str, from_pretrained: bool, checkpoint_path: Optio
             )
             model, params = load_opt_from_local_path(checkpoint_path, dtype, 
                                                      tokenizer.pad_token_id, 
-                                                     n_tokens, gradient_checkpoint)
+                                                     n_tokens, len(tokenizer), 
+                                                     gradient_checkpoint)
             if tmp_dir is not None:
                 tmp_dir.cleanup()
         elif from_pretrained:
             model, params = load_opt_from_pretrained(model_str, dtype, 
                                                      tokenizer.pad_token_id, 
-                                                     n_tokens, gradient_checkpoint)
+                                                     n_tokens, len(tokenizer), 
+                                                     gradient_checkpoint)
         else:
             model, params = load_opt_from_random(model_str, dtype, 
                                                  tokenizer.pad_token_id, 
-                                                 n_tokens, gradient_checkpoint, 
-                                                 seed)
+                                                 n_tokens, len(tokenizer), 
+                                                 gradient_checkpoint, seed)
         params = model.to_fp32(params)
     shard_rules = _get_partition_rules_opt()
     return HuggingfacePjitModelDescription(model, params, shard_rules)
+
+# data utility
+
+def prepend_bos(output_str: str) -> str:
+    return '</s> ' + output_str if not output_str.startswith('</s>') else output_str

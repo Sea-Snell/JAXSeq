@@ -31,4 +31,3 @@ def handle_checkpoint_path(model_checkpoint_path: str, gcloud_project: Optional[
         return tmp_dir.name, tmp_dir
     return model_checkpoint_path, None
 
-

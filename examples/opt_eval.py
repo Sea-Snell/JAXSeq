@@ -4,9 +4,10 @@ from transformers import AutoTokenizer
 from models.gptj import load_gptj_model
 import jax
 import optax
-from models.opt import load_opt_model
+from models.opt import load_opt_model, prepend_bos
 from seq2seq import Seq2SeqInference, load_dec_inference, opt_dec_loss
 from seq2seq_data import Seq2SeqDataset
+from utils.misc import patch_call
 from utils.path import convert_path
 import json
 import contextlib
@@ -20,6 +21,8 @@ import os
 import pickle as pkl
 import tree
 import tyro
+
+# NOTE: OPT has some NaN related bugs in the current version of transformers, see here: https://github.com/huggingface/transformers/issues/17514. Would not use until fixed. However, if you remove left padding it works fine.
 
 def main(
     model_name: str, 
@@ -57,7 +60,8 @@ def main(
     open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
+    patch_call(tokenizer, partial(tokenizer.__call__, add_special_tokens=False))
+    tokenizer.encode = partial(tokenizer.encode, add_special_tokens=False)
 
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
@@ -65,7 +69,7 @@ def main(
     raw_eval_data = raw_data['eval']
 
     eval_data = Seq2SeqDataset.from_str_list(
-        list(map(lambda x: (x['in_text'], x['out_text']), raw_eval_data)), 
+        list(map(lambda x: (prepend_bos(x['in_text']), x['out_text']), raw_eval_data)), 
         tokenizer, 
         max_input_length=max_input_length, 
         max_output_length=max_output_length, 
@@ -132,7 +136,7 @@ def main(
         random.shuffle(generation_prompts)
         generation_data = generate_language(
             inference=inference, 
-            prompts=list(map(lambda x: x['in_text'], generation_prompts)), 
+            prompts=list(map(lambda x: prepend_bos(x['in_text']), generation_prompts)), 
             references=list(map(lambda x: [x['out_text']], generation_prompts)), 
             rng=new_rng, 
             bsize=inference_bsize, 

@@ -46,6 +46,8 @@ from transformers.modeling_flax_utils import (
 )
 from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging, replace_return_docstrings
 from .t5_config_remat import T5Config
+from transformers.generation_flax_logits_process import FlaxLogitsProcessorList
+from transformers_patch.pad_tokens_logit_processor import FlaxTokenPaddingLogitProcessor
 
 remat = nn_partitioning.remat
 
@@ -934,6 +936,11 @@ class FlaxT5PreTrainedModel(FlaxPreTrainedModel):
             return freeze(unflatten_dict(params))
         else:
             return random_params
+    
+    def _get_logits_processor(self,*args, **kwargs) -> FlaxLogitsProcessorList:
+        processors = super()._get_logits_processor(*args, **kwargs)
+        processors.append(FlaxTokenPaddingLogitProcessor(self.config.n_real_tokens))
+        return processors
 
     @add_start_docstrings_to_model_forward(T5_INPUTS_DOCSTRING)
     def __call__(

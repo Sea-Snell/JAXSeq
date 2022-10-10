@@ -32,6 +32,8 @@ from transformers.modeling_flax_outputs import (
 from transformers.modeling_flax_utils import ACT2FN, FlaxPreTrainedModel, append_call_sample_docstring
 from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging
 from transformers_patch.gpt2_config_remat import GPT2Config
+from transformers.generation_flax_logits_process import FlaxLogitsProcessorList
+from transformers_patch.pad_tokens_logit_processor import FlaxTokenPaddingLogitProcessor
 
 remat = nn_partitioning.remat
 
@@ -444,6 +446,11 @@ class FlaxGPT2PreTrainedModel(FlaxPreTrainedModel):
             jax.random.PRNGKey(0), input_ids, attention_mask, position_ids, return_dict=False, init_cache=True
         )
         return unfreeze(init_variables["cache"])
+    
+    def _get_logits_processor(self,*args, **kwargs) -> FlaxLogitsProcessorList:
+        processors = super()._get_logits_processor(*args, **kwargs)
+        processors.append(FlaxTokenPaddingLogitProcessor(self.config.n_real_tokens))
+        return processors
 
     @add_start_docstrings_to_model_forward(GPT2_INPUTS_DOCSTRING)
     def __call__(

@@ -1,3 +1,4 @@
+from lib2to3.pgen2.tokenize import tokenize
 from typing import Any, Optional
 import jax.numpy as jnp
 from transformers import AutoTokenizer, T5ForConditionalGeneration
@@ -60,7 +61,7 @@ def _get_partition_rules_t5():
         (("lm_head", "kernel"), P(None, "mp")), 
     ]
 
-def load_t5_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint):
+def load_t5_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
     try:
         model, params = FlaxT5ForConditionalGeneration.from_pretrained(model_str, _do_init=False, dtype=dtype)
     except:
@@ -82,20 +83,20 @@ def load_t5_from_pretrained(model_str, dtype, pad_token_id, n_tokens, gradient_c
             params["lm_head"]["bias"] = lm_head_bias
 
     config = T5Config.from_pretrained(model_str, dtype=dtype, gradient_checkpointing=gradient_checkpoint, 
-                                      pad_token_id=pad_token_id, vocab_size=n_tokens)
+                                      pad_token_id=pad_token_id, vocab_size=n_tokens, n_real_tokens=n_real_tokens)
     model = FlaxT5ForConditionalGeneration(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_t5_from_local_path(model_path, dtype, pad_token_id, n_tokens, gradient_checkpoint):
+def load_t5_from_local_path(model_path, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
     params = from_path(FlaxT5ForConditionalGeneration, model_path)
     config = T5Config.from_pretrained(model_path, dtype=dtype, gradient_checkpointing=gradient_checkpoint, 
-                                      pad_token_id=pad_token_id, vocab_size=n_tokens)
+                                      pad_token_id=pad_token_id, vocab_size=n_tokens, n_real_tokens=n_real_tokens)
     model = FlaxT5ForConditionalGeneration(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_t5_from_random(model_str, dtype, pad_token_id, n_tokens, gradient_checkpoint, seed):
+def load_t5_from_random(model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint, seed):
     config = T5Config.from_pretrained(model_str, dtype=dtype, gradient_checkpointing=gradient_checkpoint, 
-                                      pad_token_id=pad_token_id, vocab_size=n_tokens)
+                                      pad_token_id=pad_token_id, vocab_size=n_tokens, n_real_tokens=n_real_tokens)
     model = FlaxT5ForConditionalGeneration(config, _do_init=True, dtype=dtype, seed=seed)
     params = model.params
     model = FlaxT5ForConditionalGeneration(config, _do_init=False, dtype=dtype)
@@ -117,17 +118,17 @@ def load_t5_model(model_str: str, from_pretrained: bool, checkpoint_path: Option
             )
             model, params = load_t5_from_local_path(checkpoint_path, dtype, 
                                                     tokenizer.pad_token_id, 
-                                                    n_tokens, gradient_checkpoint)
+                                                    n_tokens, len(tokenizer), gradient_checkpoint)
             if tmp_dir is not None:
                 tmp_dir.cleanup()
         elif from_pretrained:
             model, params = load_t5_from_pretrained(model_str, dtype, 
                                                     tokenizer.pad_token_id, 
-                                                    n_tokens, gradient_checkpoint)
+                                                    n_tokens, len(tokenizer), gradient_checkpoint)
         else:
             model, params = load_t5_from_random(model_str, dtype, 
                                                 tokenizer.pad_token_id, 
-                                                n_tokens, gradient_checkpoint, 
+                                                n_tokens, len(tokenizer), gradient_checkpoint, 
                                                 seed)
     if 'v1_1' in model_str or 'lm-adapt' in model_str:
         shard_rules = _get_partition_rules_t5_v1_1()

@@ -104,6 +104,7 @@ class OPTConfig(PretrainedConfig):
         bos_token_id=2,
         eos_token_id=2,
         gradient_checkpointing=True, 
+        n_real_tokens=None, 
         **kwargs
     ):
         super().__init__(
@@ -127,6 +128,9 @@ class OPTConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.do_layer_norm_before = do_layer_norm_before
         self.gradient_checkpointing = gradient_checkpointing
+        self.n_real_tokens = n_real_tokens
+        if self.n_real_tokens is None:
+            self.n_real_tokens = self.vocab_size
 
         # Note that the only purpose of `_remove_final_layer_norm` is to keep backward compatibility
         # with checkpoints that have been fine-tuned before transformers v4.20.1

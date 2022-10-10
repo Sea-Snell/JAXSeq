@@ -150,6 +150,7 @@ class GPT2Config(PretrainedConfig):
         scale_attn_by_inverse_layer_idx=False,
         reorder_and_upcast_attn=False,
         gradient_checkpointing=True,
+        n_real_tokens=None, 
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -174,6 +175,9 @@ class GPT2Config(PretrainedConfig):
         self.scale_attn_by_inverse_layer_idx = scale_attn_by_inverse_layer_idx
         self.reorder_and_upcast_attn = reorder_and_upcast_attn
         self.gradient_checkpointing = gradient_checkpointing
+        self.n_real_tokens = n_real_tokens
+        if self.n_real_tokens is None:
+            self.n_real_tokens = self.vocab_size
 
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id

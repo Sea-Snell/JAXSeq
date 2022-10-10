@@ -96,6 +96,7 @@ class T5Config(PretrainedConfig):
         pad_token_id=0,
         eos_token_id=1,
         gradient_checkpointing=True,
+        n_real_tokens=None, 
         **kwargs
     ):
         self.vocab_size = vocab_size
@@ -115,6 +116,9 @@ class T5Config(PretrainedConfig):
         self.feed_forward_proj = feed_forward_proj
         self.use_cache = use_cache
         self.gradient_checkpointing = gradient_checkpointing
+        self.n_real_tokens = n_real_tokens
+        if self.n_real_tokens is None:
+            self.n_real_tokens = self.vocab_size
 
         act_info = self.feed_forward_proj.split("-")
         self.dense_act_fn = act_info[-1]

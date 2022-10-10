@@ -32,6 +32,8 @@ from transformers.modeling_flax_outputs import FlaxBaseModelOutput, FlaxMaskedLM
 from transformers.modeling_flax_utils import ACT2FN, FlaxPreTrainedModel, append_call_sample_docstring
 from transformers.utils import add_start_docstrings, logging
 from transformers_patch.opt_config_remat import OPTConfig
+from transformers.generation_flax_logits_process import FlaxLogitsProcessorList
+from transformers_patch.pad_tokens_logit_processor import FlaxTokenPaddingLogitProcessor
 
 remat = nn_partitioning.remat
 
@@ -574,6 +576,11 @@ class FlaxOPTPreTrainedModel(FlaxPreTrainedModel):
             jax.random.PRNGKey(0), input_ids, attention_mask, position_ids, return_dict=False, init_cache=True
         )
         return unfreeze(init_variables["cache"])
+    
+    def _get_logits_processor(self,*args, **kwargs) -> FlaxLogitsProcessorList:
+        processors = super()._get_logits_processor(*args, **kwargs)
+        processors.append(FlaxTokenPaddingLogitProcessor(self.config.n_real_tokens))
+        return processors
 
     def __call__(
         self,
