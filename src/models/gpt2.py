@@ -43,7 +43,7 @@ def load_gpt2_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_t
     
     # pad embeddings
     emb = jnp.zeros((n_tokens, model.config.hidden_size))
-    emb = emb.at[:50257, :].set(params["transformer"]["wte"]["embedding"])
+    emb = emb.at[:model.config.vocab_size, :].set(params["transformer"]["wte"]["embedding"])
     params["transformer"]["wte"]["embedding"] = emb
     
     config = GPT2Config.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
