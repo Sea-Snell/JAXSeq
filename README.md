@@ -60,3 +60,9 @@ This code was largely tested, developed, and optimized for use on TPU-pods, thou
 
 To further support TPU workflows the example scripts provide functionality for uploading / downloading data and or checkpoints to / from Google Cloud Storage buckets. This can be achieved by prefixing the path with `gcs://`. And depending on the permissions of the bucket, you may need to specify the google cloud project and provide an authentication token.
 
+
+## Other Excellent References for Working with Large Models in Jax
+
+* [DALL-E Mini Repo](https://t.co/BlM8e66utJ)
+* [Huggingface Model Parallel Jax Demo](https://t.co/eGscnvtNDR)
+* [GPT-J Repo](https://github.com/kingoflolz/mesh-transformer-jax) [uses x-map instead of pjit]

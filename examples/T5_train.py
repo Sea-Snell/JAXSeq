@@ -65,6 +65,8 @@ def main(
 
     gcloud_project: Optional[str]=None, 
     gcloud_token_path: Optional[str]=None, 
+
+    use_adafactor: bool=False, 
 ):
     input_args = locals()
     print(input_args)
@@ -113,16 +115,27 @@ def main(
         gcloud_token=gcloud_token_path, 
     )
 
-    optim = optax.MultiSteps(
-        optax.adamw(
-            learning_rate=lr, 
-            b1=0.9, 
-            b2=0.999, 
-            eps=1e-6, 
-            weight_decay=weight_decay, 
-        ), 
-        every_k_schedule=grad_accum_steps, 
-    )
+    if use_adafactor:
+        optim = optax.MultiSteps(
+            optax.adafactor(
+                learning_rate=lr, 
+                multiply_by_parameter_scale=False, 
+            ), 
+            every_k_schedule=grad_accum_steps, 
+        )
+        optim_type = OptimType.AdaFactorMultiStep
+    else:
+        optim = optax.MultiSteps(
+            optax.adamw(
+                learning_rate=lr, 
+                b1=0.9, 
+                b2=0.999, 
+                eps=1e-6, 
+                weight_decay=weight_decay, 
+            ), 
+            every_k_schedule=grad_accum_steps, 
+        )
+        optim_type = OptimType.AdamWMultiStep
 
     # mesh definition
     if do_pjit:
@@ -136,8 +149,7 @@ def main(
     # shard params and optimizer
     if do_pjit:
         (params, param_spec), (optim_state, optim_state_spec) = shard_optim_and_params(partial(model.init_weights, input_shape=(1, 1)), 
-                                                                                       params, shard_rules, mesh, optim, 
-                                                                                       OptimType.AdamWMultiStep)
+                                                                                       params, shard_rules, mesh, optim, optim_type)
     else:
         optim_state, param_spec, optim_state_spec = optim.init(params), None, None
 

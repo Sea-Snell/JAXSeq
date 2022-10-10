@@ -13,7 +13,6 @@ import os
 import numpy as np
 from jax.experimental.maps import Mesh
 from shard import shard_params
-import tyro
 
 # setup app
 
@@ -96,7 +95,12 @@ class InferenceServer:
 
 InferenceServerMP = serve_class(InferenceServer)
 
-inference_server = tyro.cli(InferenceServerMP)
+# feel free to change any of these settings
+inference_server = InferenceServerMP(
+    model_name='EleutherAI/gpt-j-6B', 
+    checkpoint_path=None, 
+    model_p_shape=8, 
+)
 
 # flask endpoints
 

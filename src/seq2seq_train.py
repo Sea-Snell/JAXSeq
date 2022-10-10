@@ -120,7 +120,6 @@ def train_loop(
             # step model and get training logs
             rng, new_rng = jax.random.split(rng)
             _, info, trainer = trainer.train_step(items, new_rng)
-            print(info)
             train_logs.append(info)
             
             # publish training logs and clear logs

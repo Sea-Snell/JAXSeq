@@ -315,7 +315,7 @@ def load_enc_dec_inference(
         p_logprob_fn = pjit(
             logprob_fn, 
             in_axis_resources=(param_spec, data_shard_spec.tokens_spec, data_shard_spec.tokens_spec,), 
-            out_axis_resources=data_shard_spec.logits_spec, 
+            out_axis_resources=LogProbsOutput(data_shard_spec.logprobs_spec, data_shard_spec.logits_spec), 
         )
     else:
         p_logprob_fn = logprob_fn
@@ -462,7 +462,7 @@ def load_dec_inference(
         p_logprob_fn = pjit(
             logprob_fn, 
             in_axis_resources=(param_spec, data_shard_spec.tokens_spec, data_shard_spec.tokens_spec,), 
-            out_axis_resources=data_shard_spec.logits_spec, 
+            out_axis_resources=LogProbsOutput(data_shard_spec.logprobs_spec, data_shard_spec.logits_spec), 
         )
     else:
         p_logprob_fn = logprob_fn
