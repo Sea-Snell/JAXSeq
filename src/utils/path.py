@@ -9,6 +9,4 @@ def convert_path(path: Optional[str]):
         return None
     if path.startswith('/') or path.startswith('gcs://'):
         return path
-    if not path.startswith('/'):
-        path = '/' + path
     return path
