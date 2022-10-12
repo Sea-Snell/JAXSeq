@@ -9,4 +9,4 @@ def convert_path(path: Optional[str]):
         return None
     if path.startswith('/') or path.startswith('gcs://'):
         return path
-    return path
+    return os.path.join(project_root, path)
