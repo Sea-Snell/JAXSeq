@@ -34,6 +34,9 @@ from transformers.utils import add_start_docstrings, add_start_docstrings_to_mod
 from transformers_patch.gptj_config_remat import GPTJConfig
 from transformers.generation_flax_logits_process import FlaxLogitsProcessorList
 from transformers_patch.pad_tokens_logit_processor import FlaxTokenPaddingLogitProcessor
+from jax.experimental.pjit import with_sharding_constraint
+from jax.experimental import PartitionSpec
+from jax.interpreters import pxla
 
 remat = nn_partitioning.remat
 
@@ -216,6 +219,12 @@ class FlaxGPTJAttention(nn.Module):
 
         sincos = jnp.take(self.embed_positions, position_ids, axis=0)
         sincos = jnp.split(sincos, 2, axis=-1)
+        resource_env = pxla.thread_resources.env
+        mesh = resource_env.physical_mesh
+        # Rotary position embeddings induce some weird issues in multi-host environments, so we remove activation-sharding for keys/query vectors to fix this.
+        if "dp" in mesh.axis_names:
+            key = with_sharding_constraint(key, PartitionSpec("dp", None, None, None))
+            query = with_sharding_constraint(query, PartitionSpec("dp", None, None, None))
         if self.rotary_dim is not None:
             k_rot = key[:, :, :, : self.rotary_dim]
             k_pass = key[:, :, :, self.rotary_dim :]

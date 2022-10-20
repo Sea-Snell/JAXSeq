@@ -6,6 +6,8 @@ Built on top of [HuggingFace](https://huggingface.co)'s [Transformers](https://g
 
 Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pjit.html) function, you can straightforwardly train models with arbitrary model and data parellelism; you can trade-off these two as you like. You can also do model parallelism across multiple hosts. Support for gradient checkpointing, gradient accumulation, and bfloat16 training/inference is provided as well for memory efficient training.
 
+*NOTE: You may encounter unexpected issues in multi-node environments. Therefore this feature should be considered experimental. OPT also currently has some issues related to [this](https://github.com/huggingface/transformers/issues/17514). See the "notes" section below for more details. If you encounter an error, feel free to leave an issue!*
+
 ## installation
 
 ### **1. pull from github**
@@ -54,8 +56,6 @@ We provide some example scripts for training and evaluating GPT2, GPTJ, OPT, and
 
 This code was largely tested, developed, and optimized for use on TPU-pods, though it should also work well on GPU clusters.
 
-*NOTE: The T5 examples are the most stable; some of the others I still need to more extensively test.*
-
 ## Google Cloud Buckets
 
 To further support TPU workflows the example scripts provide functionality for uploading / downloading data and or checkpoints to / from Google Cloud Storage buckets. This can be achieved by prefixing the path with `gcs://`. And depending on the permissions of the bucket, you may need to specify the google cloud project and provide an authentication token.
@@ -68,3 +68,9 @@ To further support TPU workflows the example scripts provide functionality for u
 * [GPT-J Repo](https://github.com/kingoflolz/mesh-transformer-jax) [uses xmap instead of pjit]
 * [Alpa](https://github.com/alpa-projects/alpa)
 * [Jaxformer](https://github.com/salesforce/jaxformer)
+
+## Notes
+
+* The OPT examples currently don't work. The model will output NaN's when used with left-padding. The error is related to [this issue](https://github.com/huggingface/transformers/issues/17514). One possible workaround is to move the beginning of sequence token to before the left-padding.
+* There may be unexpected issues when working in multi-node environments. T5, GPT2, and GPTJ have been tested to work in multi-node environments, however there may still be unexpected issues.
+* You will need to develop your own solution for splitting up batches across hosts in multi-data data-parallel enviornments. The best way to do this is to just load different data files on each host.

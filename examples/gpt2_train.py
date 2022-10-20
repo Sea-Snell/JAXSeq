@@ -177,7 +177,7 @@ def main(
 
         rng, new_rng = jax.random.split(rng)
         generation_prompts = list(raw_eval_data)
-        random.shuffle(generation_prompts)
+        # random.shuffle(generation_prompts)
         generation_data = generate_language(
             inference=inference, 
             prompts=list(map(lambda x: x['in_text'], generation_prompts)), 
