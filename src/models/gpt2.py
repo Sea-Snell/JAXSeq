@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 import jax
 import jax.numpy as jnp
-from models.base import HuggingfacePjitModelDescription, get_dtype, handle_checkpoint_path
+from models.base import HuggingfacePjitModelDescription, get_dtype, handle_checkpoint
 from transformers_patch.gpt2_config_remat import GPT2Config
 from transformers_patch.gpt2_remat import FlaxGPT2LMHeadModel
 from flax.traverse_util import flatten_dict, unflatten_dict
@@ -52,9 +52,8 @@ def load_gpt2_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_t
     model = FlaxGPT2LMHeadModel(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_gpt2_from_local_path(model_path, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
-    params = from_path(FlaxGPT2LMHeadModel, model_path)
-    config = GPT2Config.from_pretrained(model_path, vocab_size=n_tokens, dtype=dtype, 
+def load_gpt2_from_local_path(params, model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
+    config = GPT2Config.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
                                         pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
                                         n_real_tokens=n_real_tokens)
     model = FlaxGPT2LMHeadModel(config, _do_init=False, dtype=dtype)
@@ -80,17 +79,15 @@ def load_gpt2_model(model_str: str, from_pretrained: bool, checkpoint_path: Opti
     with jax.default_device(jax.devices('cpu')[0]):
         dtype = get_dtype(use_fp16)
         if checkpoint_path is not None:
-            checkpoint_path, tmp_dir = handle_checkpoint_path(
+            params = handle_checkpoint(
                 checkpoint_path, 
                 gcloud_project=gcloud_project, 
                 gcloud_token=gcloud_token
             )
-            model, params = load_gpt2_from_local_path(checkpoint_path, dtype, 
+            model, params = load_gpt2_from_local_path(params, model_str, dtype, 
                                                       tokenizer.pad_token_id, 
                                                       n_tokens, len(tokenizer)-1,
                                                       gradient_checkpoint)
-            if tmp_dir is not None:
-                tmp_dir.cleanup()
         elif from_pretrained:
             model, params = load_gpt2_from_pretrained(model_str, dtype, 
                                                       tokenizer.pad_token_id, 

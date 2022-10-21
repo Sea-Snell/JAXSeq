@@ -1,10 +1,13 @@
-from typing import Any, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional, Tuple, Union
 import jax.numpy as jnp
 import jax
 from jaxtyping import PyTree
 from transformers.modeling_flax_utils import FlaxPreTrainedModel
 import tempfile
 import gcsfs
+import pickle as pkl
+
+from utils.gcs_manager import open_pp
 
 class HuggingfacePjitModelDescription(NamedTuple):
     model: FlaxPreTrainedModel
@@ -18,16 +21,8 @@ def get_dtype(use_fp16: bool):
         return jnp.float16
     return jnp.float32
 
-def handle_checkpoint_path(model_checkpoint_path: str, gcloud_project: Optional[str]=None, 
-                           gcloud_token: Optional[Any]=None) -> Tuple[str, tempfile.TemporaryDirectory]:
-    if model_checkpoint_path.startswith('gcs://'):
-        model_checkpoint_path = model_checkpoint_path[len('gcs://'):]
-        model_checkpoint_path = model_checkpoint_path if model_checkpoint_path.endswith('/') else model_checkpoint_path+'/'
-        
-        tmp_dir = tempfile.TemporaryDirectory()
-        tmp_dir_name = tmp_dir.name if tmp_dir.name.endswith('/') else tmp_dir.name+'/'
-        # download data
-        gcsfs.GCSFileSystem(project=gcloud_project, token=gcloud_token).get(model_checkpoint_path, tmp_dir_name, recursive=True)
-        return tmp_dir.name, tmp_dir
-    return model_checkpoint_path, None
-
+def handle_checkpoint(model_checkpoint_path: str, gcloud_project: Optional[str]=None, 
+                           gcloud_token: Optional[Any]=None) -> PyTree:
+    with open_pp(model_checkpoint_path, 'rb', gcloud_project=gcloud_project, gcloud_token=gcloud_token) as f:
+        params = pkl.load(f)
+    return params

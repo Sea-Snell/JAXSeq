@@ -5,7 +5,7 @@ from transformers import OPTForCausalLM
 import jax.numpy as jnp
 from jax.experimental import PartitionSpec as P
 from flax.core.frozen_dict import freeze
-from models.base import HuggingfacePjitModelDescription, get_dtype, handle_checkpoint_path
+from models.base import HuggingfacePjitModelDescription, get_dtype, handle_checkpoint
 from transformers_patch.load_sharded import from_path
 from transformers.tokenization_utils import PreTrainedTokenizer
 import jax
@@ -72,9 +72,8 @@ def load_opt_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_to
     model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_opt_from_local_path(model_path, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
-    params = from_path(FlaxOPTForCausalLM, model_path)
-    config = OPTConfig.from_pretrained(model_path, vocab_size=n_tokens, dtype=dtype, 
+def load_opt_from_local_path(params, model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
+    config = OPTConfig.from_pretrained(model_str, vocab_size=n_tokens, dtype=dtype, 
                                         pad_token_id=pad_token_id, gradient_checkpoint=gradient_checkpoint, 
                                         n_real_tokens=n_real_tokens)
     model = FlaxOPTForCausalLM(config, _do_init=False, dtype=dtype)
@@ -98,17 +97,15 @@ def load_opt_model(model_str: str, from_pretrained: bool, checkpoint_path: Optio
     with jax.default_device(jax.devices('cpu')[0]):
         dtype = get_dtype(use_fp16)
         if checkpoint_path is not None:
-            checkpoint_path, tmp_dir = handle_checkpoint_path(
+            params = handle_checkpoint(
                 checkpoint_path, 
                 gcloud_project=gcloud_project, 
                 gcloud_token=gcloud_token
             )
-            model, params = load_opt_from_local_path(checkpoint_path, dtype, 
+            model, params = load_opt_from_local_path(params, model_str, dtype, 
                                                      tokenizer.pad_token_id, 
                                                      n_tokens, len(tokenizer), 
                                                      gradient_checkpoint)
-            if tmp_dir is not None:
-                tmp_dir.cleanup()
         elif from_pretrained:
             model, params = load_opt_from_pretrained(model_str, dtype, 
                                                      tokenizer.pad_token_id, 
@@ -127,3 +124,7 @@ def load_opt_model(model_str: str, from_pretrained: bool, checkpoint_path: Optio
 
 def prepend_bos(output_str: str) -> str:
     return '</s> ' + output_str if not output_str.startswith('</s>') else output_str
+
+def force_bos_to_start(x: jnp.ndarray, attention_mask: jnp.ndarray) -> jnp.ndarray:
+    batch_idx, bos_idx = jnp.arange(0, attention_mask.shape[0]), attention_mask.argmax(axis=1)
+    return x.at[batch_idx, bos_idx].set(x[batch_idx, 0]).at[batch_idx, 0].set(x[batch_idx, bos_idx])

@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, request
 from flask_cors import CORS
 from models.gptj import load_gptj_model
-from seq2seq import load_dec_inference
+from seq2seq import load_gpt_dec_inference
+from utils.multihost_shard_utils import get_mesh_idxs, get_mesh_lens
 from utils.serve_queue import serve_class
 import jax
 import json
@@ -28,7 +29,6 @@ class InferenceServer:
         model_name: str, # EleutherAI/gpt-j-6B [6.5B]
 
         checkpoint_path: Optional[str]=None, 
-        checkpoint_is_sharded: bool=True, 
 
         do_pjit: bool=True, 
         model_p_shape: int=1, 
@@ -43,9 +43,17 @@ class InferenceServer:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
 
-        if checkpoint_is_sharded and checkpoint_path is not None:
-            tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
-            checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
+        # mesh definition
+        if do_pjit:
+            mesh_devices = np.array(jax.devices()).reshape(data_p_shape, model_p_shape)
+            print('using mesh shape:', mesh_devices.shape)
+            print('full mesh:', mesh_devices)
+            mesh = Mesh(mesh_devices, ("dp", "mp"))
+            process_idxs = get_mesh_idxs(jax.process_index(), mesh.devices)
+            process_shape = get_mesh_lens(mesh.devices)
+            print(f'current process index {jax.process_index()}, in position {process_idxs} of {process_shape}')
+        else:
+            mesh = contextlib.nullcontext()
 
         model, params, shard_rules = load_gptj_model(
             model_str=model_name, 
@@ -59,23 +67,14 @@ class InferenceServer:
             gcloud_token=gcloud_token_path, 
         )
 
-        # mesh definition
-        if do_pjit:
-            mesh_devices = np.array(jax.devices()).reshape(data_p_shape, model_p_shape)
-            print('using mesh shape:', mesh_devices.shape)
-            print('full mesh:', mesh_devices)
-            mesh = Mesh(mesh_devices, ("dp", "mp"))
-        else:
-            mesh = contextlib.nullcontext()
-
         # shard params and optimizer
         if do_pjit:
             params, param_spec = shard_params(partial(model.init_weights, input_shape=(1, 1)), 
-                                                      params, shard_rules, mesh)
+                                                      params, shard_rules, mesh, 1)
         else:
             param_spec = None
 
-        self.inference = load_dec_inference(
+        self.inference = load_gpt_dec_inference(
             model=model, 
             params=params, 
             param_spec=param_spec, 

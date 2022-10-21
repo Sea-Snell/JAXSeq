@@ -10,7 +10,7 @@ from transformers.modeling_flax_pytorch_utils import convert_pytorch_state_dict_
 from transformers_patch.load_sharded import from_path
 from transformers.tokenization_utils import PreTrainedTokenizer
 import math
-from models.base import HuggingfacePjitModelDescription, get_dtype, handle_checkpoint_path
+from models.base import HuggingfacePjitModelDescription, get_dtype, handle_checkpoint
 import jax
 import tempfile
 
@@ -87,9 +87,8 @@ def load_t5_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_tok
     model = FlaxT5ForConditionalGeneration(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
 
-def load_t5_from_local_path(model_path, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
-    params = from_path(FlaxT5ForConditionalGeneration, model_path)
-    config = T5Config.from_pretrained(model_path, dtype=dtype, gradient_checkpointing=gradient_checkpoint, 
+def load_t5_from_local_path(params, model_str, dtype, pad_token_id, n_tokens, n_real_tokens, gradient_checkpoint):
+    config = T5Config.from_pretrained(model_str, dtype=dtype, gradient_checkpointing=gradient_checkpoint, 
                                       pad_token_id=pad_token_id, vocab_size=n_tokens, n_real_tokens=n_real_tokens)
     model = FlaxT5ForConditionalGeneration(config, _do_init=False, dtype=dtype)
     return model, freeze(params)
@@ -111,16 +110,14 @@ def load_t5_model(model_str: str, from_pretrained: bool, checkpoint_path: Option
     with jax.default_device(jax.devices('cpu')[0]):
         dtype = get_dtype(use_fp16)
         if checkpoint_path is not None:
-            checkpoint_path, tmp_dir = handle_checkpoint_path(
+            params = handle_checkpoint(
                 checkpoint_path, 
                 gcloud_project=gcloud_project, 
                 gcloud_token=gcloud_token
             )
-            model, params = load_t5_from_local_path(checkpoint_path, dtype, 
+            model, params = load_t5_from_local_path(params, model_str, dtype, 
                                                     tokenizer.pad_token_id, 
                                                     n_tokens, len(tokenizer), gradient_checkpoint)
-            if tmp_dir is not None:
-                tmp_dir.cleanup()
         elif from_pretrained:
             model, params = load_t5_from_pretrained(model_str, dtype, 
                                                     tokenizer.pad_token_id, 

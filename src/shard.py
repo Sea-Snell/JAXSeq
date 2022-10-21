@@ -1,6 +1,6 @@
 from collections import namedtuple
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import jax
 from utils.shard_utils import set_partitions, _id_fn
 from flax.core.frozen_dict import freeze
@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from flax.core.frozen_dict import freeze, unfreeze
 from jax.experimental.maps import Mesh
 import numpy as np
-from utils.multihost_shard_utils import host_param_shard
+from utils.multihost_shard_utils import host_param_shard, get_mesh_idxs, get_mesh_lens
 from jax.random import KeyArray
 from optax import softmax_cross_entropy_with_integer_labels
 from flax.core.frozen_dict import FrozenDict
@@ -17,6 +17,7 @@ from jaxtyping import PyTree
 from transformers.modeling_flax_utils import FlaxPreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
 from jax.experimental.pjit import pjit
+import itertools
 
 class OptimType(Enum):
     AdamW = 1
@@ -24,7 +25,7 @@ class OptimType(Enum):
     AdaFactor = 3
     AdaFactorMultiStep = 4
 
-def shard_params(model_init_fn: Callable[[KeyArray], PyTree], params: PyTree, shard_rules: Any, mesh: Mesh) -> Tuple[PyTree, PyTree]:
+def shard_params(model_init_fn: Callable[[KeyArray], PyTree], params: PyTree, shard_rules: Any, mesh: Mesh, mp_axis: int) -> Tuple[PyTree, PyTree]:
 
     # dummy rng
     rng = jax.random.PRNGKey(0)
@@ -51,7 +52,7 @@ def shard_params(model_init_fn: Callable[[KeyArray], PyTree], params: PyTree, sh
         rng, new_rng = jax.random.split(rng)
         host_param_shapes = jax.eval_shape(p_model_init_fn, new_rng)
     with jax.default_device(jax.devices('cpu')[0]):
-        params = host_param_shard(host_param_shapes, params, mesh.devices, 1)
+        params = host_param_shard(host_param_shapes, params, mesh.devices, mp_axis)
 
     # split the params between all devices
     with mesh:
@@ -59,7 +60,7 @@ def shard_params(model_init_fn: Callable[[KeyArray], PyTree], params: PyTree, sh
     
     return params, param_spec
 
-def shard_optim_and_params(model_init_fn: Callable[[KeyArray], PyTree], params: PyTree, shard_rules: Any, mesh: Mesh, 
+def shard_optim_and_params(model_init_fn: Callable[[KeyArray], PyTree], params: PyTree, shard_rules: Any, mesh: Mesh, mp_axis: int, 
                            optim: optax.GradientTransformation, optim_type: OptimType) -> Tuple[Tuple[PyTree, PyTree], Tuple[PyTree, PyTree]]:
     
     # dummy rng
@@ -123,10 +124,20 @@ def shard_optim_and_params(model_init_fn: Callable[[KeyArray], PyTree], params: 
         rng, new_rng = jax.random.split(rng)
         host_param_shapes = jax.eval_shape(p_model_init_fn, new_rng)
     with jax.default_device(jax.devices('cpu')[0]):
-        params = host_param_shard(host_param_shapes, params, mesh.devices, 1)
+        params = host_param_shard(host_param_shapes, params, mesh.devices, mp_axis)
 
     # split the opt_state and params between all devices
     with mesh:
         opt_state, params = p_get_initial_state(params)
     
     return (params, param_spec), (opt_state, opt_state_spec)
+
+def shard_data_list(data: List[Any], mesh: Mesh, dp_axis: int):
+    dp_size = get_mesh_lens(mesh.devices)[dp_axis]
+    dp_idx = get_mesh_idxs(jax.process_index(), mesh.devices)[dp_axis]
+    return data[dp_idx::dp_size]
+
+def shard_data_iterable(data: Iterable[Any], mesh: Mesh, dp_axis: int):
+    dp_size = get_mesh_lens(mesh.devices)[dp_axis]
+    dp_idx = get_mesh_idxs(jax.process_index(), mesh.devices)[dp_axis]
+    return itertools.islice(data, dp_idx, None, dp_size)

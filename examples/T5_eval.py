@@ -3,14 +3,15 @@ from typing import Any, Optional
 from transformers import T5Tokenizer
 from models.T5 import load_t5_model, prepend_pad
 import jax
-from seq2seq import Seq2SeqInference, load_enc_dec_trainer, load_enc_dec_inference
+from seq2seq import Seq2SeqInference, load_t5_enc_dec_inference
 from seq2seq_data import Seq2SeqDataset
+from utils.multihost_shard_utils import convert_bsize, get_mesh_idxs, get_mesh_lens
 from utils.path import convert_path
 import json
 import contextlib
 import numpy as np
 from jax.experimental.maps import Mesh
-from shard import shard_params
+from shard import shard_data_list, shard_params
 from functools import partial
 from seq2seq_train import train_loop, eval_loss
 from evaluate import generate_language, compute_metrics
@@ -24,7 +25,6 @@ def main(
     /,  # Mark the end of positional arguments.
 
     checkpoint_path: Optional[str]=None, 
-    checkpoint_is_sharded: bool=True, 
 
     do_pjit: bool=True, 
     model_p_shape: int=1, 
@@ -54,10 +54,30 @@ def main(
 
     tokenizer = T5Tokenizer.from_pretrained(model_name)
 
+    # mesh definition
+    if do_pjit:
+        mesh_devices = np.array(jax.devices()).reshape(data_p_shape, model_p_shape)
+        print('using mesh shape:', mesh_devices.shape)
+        print('full mesh:', mesh_devices)
+        mesh = Mesh(mesh_devices, ("dp", "mp"))
+        process_idxs = get_mesh_idxs(jax.process_index(), mesh.devices)
+        process_shape = get_mesh_lens(mesh.devices)
+        print(f'current process index {jax.process_index()}, in position {process_idxs} of {process_shape}')
+    else:
+        mesh = contextlib.nullcontext()
+    
+    # divide bsize by number of data-parallel nodes
+    if do_pjit:
+        inference_bsize = convert_bsize(inference_bsize, mesh.devices, 0)
+
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
     
     raw_eval_data = raw_data['eval']
+
+    # shard data by number of data parallel processes
+    if do_pjit:
+        raw_eval_data = shard_data_list(raw_eval_data, mesh, 0)
 
     eval_data = Seq2SeqDataset.from_str_list(
         list(map(lambda x: (x['in_text'], prepend_pad(x['out_text'])), raw_eval_data)), 
@@ -67,10 +87,6 @@ def main(
         trunc_inputs_last=trunc_inputs_last, 
         trunc_outputs_last=trunc_outputs_last, 
     )
-
-    if checkpoint_is_sharded and checkpoint_path is not None:
-        tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
-        checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
     
     model, params, shard_rules = load_t5_model(
         model_str=model_name, 
@@ -84,23 +100,14 @@ def main(
         gcloud_token=gcloud_token_path, 
     )
 
-    # mesh definition
-    if do_pjit:
-        mesh_devices = np.array(jax.devices()).reshape(data_p_shape, model_p_shape)
-        print('using mesh shape:', mesh_devices.shape)
-        print('full mesh:', mesh_devices)
-        mesh = Mesh(mesh_devices, ("dp", "mp"))
-    else:
-        mesh = contextlib.nullcontext()
-
     # shard params and optimizer
     if do_pjit:
         params, param_spec = shard_params(partial(model.init_weights, input_shape=(1, 1)), 
-                                                                             params, shard_rules, mesh)
+                                          params, shard_rules, mesh, 1)
     else:
         param_spec = None
 
-    inference = load_enc_dec_inference(
+    inference = load_t5_enc_dec_inference(
         model=model, 
         params=params, 
         param_spec=param_spec, 

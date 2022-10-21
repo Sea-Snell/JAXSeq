@@ -13,29 +13,15 @@ from logs import combine_logs, label_logs, log, pull_logs
 import os
 from transformers.modeling_flax_utils import FlaxPreTrainedModel
 import wandb
-import tempfile
 import gcsfs
+import pickle as pkl
+from utils.gcs_manager import open_pp
 
-def save_checkpoint_path(model_output_path: str, model: FlaxPreTrainedModel, 
-                         params: PyTree, gcloud_project: Optional[str]=None, 
+def save_checkpoint_path(model_output_path: str, params: PyTree, 
+                         gcloud_project: Optional[str]=None, 
                          gcloud_token: Optional[Any]=None) -> None:
-    if model_output_path.startswith('gcs://'):
-        model_output_path = model_output_path[len('gcs://'):]
-        # save to tmp_dir
-        tmp_dir = tempfile.TemporaryDirectory()
-        model.save_pretrained(
-            tmp_dir.name, 
-            params=params, 
-        )
-        # upload to gcloud bucket
-        gcsfs.GCSFileSystem(project=gcloud_project, token=gcloud_token).put(tmp_dir.name, model_output_path, recursive=True)
-        # delete temp_dir
-        tmp_dir.cleanup()
-    else:
-        model.save_pretrained(
-            model_output_path, 
-            params=params, 
-        )
+    with open_pp(model_output_path, 'wb', gcloud_project=gcloud_project, gcloud_token=gcloud_token) as f:
+        pkl.dump(params, f)
 
 def delete_checkpoint(checkpoint_path: str, gcloud_project: Optional[str]=None, gcloud_token: Optional[Any]=None) -> None:
     if checkpoint_path.startswith('gcs://'):
@@ -74,7 +60,6 @@ def eval_loss(
     return eval_logs
 
 def train_loop(
-    model: FlaxPreTrainedModel, 
     trainer: Seq2SeqTrainer, 
     inference: Seq2SeqInference, 
     evaluator: Optional[Callable[[Seq2SeqInference], Tuple[float, Dict[str, Any]]]], 
@@ -94,6 +79,7 @@ def train_loop(
     wandb_project: Optional[str], 
     wandb_run_name: Optional[str], 
     wandb_config: Optional[Dict[str, Any]], 
+    param_combine_function: Callable[[PyTree], PyTree]=jax.device_get, 
     prefetch_batches: Optional[int]=None, 
     gcloud_project: Optional[str]=None, 
     gcloud_token: Optional[Any]=None, 
@@ -112,10 +98,10 @@ def train_loop(
     steps_per_epoch = len(dataset) // bsize if isinstance(dataset, Dataset) else None
 
     # begin training loop
-    for epoch in tqdm(range(epochs), disable=jax.process_index() > 0):
+    for epoch in tqdm(range(epochs)):
         rng, new_rng = jax.random.split(rng)
         d = dataloader(new_rng, dataset, bsize, prefetch_batches=prefetch_batches, truncate=True)
-        for items in tqdm(d, total=steps_per_epoch, disable=jax.process_index() > 0):
+        for items in tqdm(d, total=steps_per_epoch):
             
             # step model and get training logs
             rng, new_rng = jax.random.split(rng)
@@ -126,8 +112,7 @@ def train_loop(
             if (step + 1) % log_every == 0:
                 logs = combine_logs(train_logs)
                 logs = pull_logs(label_logs(logs, 'train', {'step': step+1, 'epoch': epoch}))
-                if jax.process_index() == 0:
-                    log(logs, use_wandb)
+                log(logs, use_wandb and jax.process_index() == 0)
                 train_logs = []
             
             # begin evaluation
@@ -139,17 +124,16 @@ def train_loop(
 
                 # publish eval logs
                 eval_logs = pull_logs(label_logs(eval_logs, 'eval', {'step': step+1, 'epoch': epoch}))
-                if jax.process_index() == 0:
-                    log(eval_logs, use_wandb)
+                log(eval_logs, use_wandb and jax.process_index() == 0)
 
                 # conditionally save best model and optimizer state
+                full_params = param_combine_function(trainer.params)
                 if save_dir is not None and save_best and eval_perf < best_perf:
                     print('new best model! Saving ...')
-                    model_dir = os.path.join(save_dir, 'model')
+                    model_dir = os.path.join(save_dir, 'model.pkl')
                     save_checkpoint_path(
                         model_output_path=model_dir, 
-                        model=model, 
-                        params=jax.device_get(trainer.params), 
+                        params=full_params, 
                         gcloud_project=gcloud_project, 
                         gcloud_token=gcloud_token, 
                     )
@@ -157,6 +141,7 @@ def train_loop(
                     best_perf = eval_perf
             
             # periodically save checkpoint
+            full_params = param_combine_function(trainer.params)
             if save_dir is not None and save_every is not None and (step + 1) % save_every == 0:
                 print('saving checkpoint...')
 
@@ -164,11 +149,10 @@ def train_loop(
                 if (max_checkpoints is not None) and (len(saved_checkpoints) >= max_checkpoints):
                     delete_checkpoint(saved_checkpoints.popleft(), gcloud_project=gcloud_project, gcloud_token=gcloud_token)
 
-                model_dir = os.path.join(save_dir, 'model_%d' % (step+1))
+                model_dir = os.path.join(save_dir, 'model_%d.pkl' % (step+1))
                 save_checkpoint_path(
                     model_output_path=model_dir, 
-                    model=model, 
-                    params=jax.device_get(trainer.params), 
+                    params=full_params, 
                     gcloud_project=gcloud_project, 
                     gcloud_token=gcloud_token, 
                 )
@@ -186,13 +170,13 @@ def train_loop(
             break
     
     # save final checkpoint
+    full_params = param_combine_function(trainer.params)
     if save_dir is not None and save_at_end:
         print('saving checkpoint...')
-        model_dir = os.path.join(save_dir, 'model_%d' % (step+1))
+        model_dir = os.path.join(save_dir, 'model_%d.pkl' % (step+1))
         save_checkpoint_path(
             model_output_path=model_dir, 
-            model=model, 
-            params=jax.device_get(trainer.params), 
+            params=full_params, 
             gcloud_project=gcloud_project, 
             gcloud_token=gcloud_token, 
         )

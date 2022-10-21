@@ -6,7 +6,7 @@ Built on top of [HuggingFace](https://huggingface.co)'s [Transformers](https://g
 
 Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pjit.html) function, you can straightforwardly train models with arbitrary model and data parellelism; you can trade-off these two as you like. You can also do model parallelism across multiple hosts. Support for gradient checkpointing, gradient accumulation, and bfloat16 training/inference is provided as well for memory efficient training.
 
-*NOTE: You may encounter unexpected issues in multi-node environments. Therefore this feature should be considered experimental. OPT also currently has some issues related to [this](https://github.com/huggingface/transformers/issues/17514). See the "notes" section below for more details. If you encounter an error, feel free to leave an issue!*
+**If you encounter an error or want to contribute, feel free to drop an issue!**
 
 ## installation
 
@@ -41,7 +41,7 @@ python -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/ja
 conda env create -f environment.yml
 conda activate JaxSeq
 python -m pip install --upgrade pip
-python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+python -m pip install "jax[tpu]==0.3.21" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 ```
 
 ## Workflow
@@ -69,8 +69,3 @@ To further support TPU workflows the example scripts provide functionality for u
 * [Alpa](https://github.com/alpa-projects/alpa)
 * [Jaxformer](https://github.com/salesforce/jaxformer)
 
-## Notes
-
-* The OPT examples currently don't work. The model will output NaN's when used with left-padding. The error is related to [this issue](https://github.com/huggingface/transformers/issues/17514). One possible workaround is to move the beginning of sequence token to before the left-padding.
-* There may be unexpected issues when working in multi-node environments. T5, GPT2, and GPTJ have been tested to work in multi-node environments, however there may still be unexpected issues.
-* You will need to develop your own solution for splitting up batches across hosts in multi-data data-parallel enviornments. The best way to do this is to just load different data files on each host.

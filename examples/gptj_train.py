@@ -4,20 +4,20 @@ from transformers import AutoTokenizer
 from models.gptj import load_gptj_model
 import jax
 import optax
-from seq2seq import Seq2SeqInference, load_dec_inference, load_dec_trainer
+from seq2seq import Seq2SeqInference, load_gpt_dec_inference, load_gpt_dec_trainer
 from seq2seq_data import Seq2SeqDataset
 from utils.path import convert_path
 import json
 import contextlib
 import numpy as np
 from jax.experimental.maps import Mesh
-from shard import shard_optim_and_params, OptimType
+from shard import shard_data_list, shard_optim_and_params, OptimType
 from functools import partial
 from seq2seq_train import train_loop, eval_loss
 from evaluate import generate_language, compute_metrics
+from utils.multihost_shard_utils import convert_bsize, get_host_param_combine_function, get_mesh_idxs, get_mesh_lens
 import os
 import pickle as pkl
-import tree
 import tyro
 
 def main(
@@ -28,7 +28,6 @@ def main(
     /,  # Mark the end of positional arguments.
 
     checkpoint_path: Optional[str]=None, 
-    checkpoint_is_sharded: bool=True, 
 
     outputs_path: Optional[str]='outputs/gptj_train', 
 
@@ -61,7 +60,7 @@ def main(
     eval_every: int=256, 
 
     inference_bsize: int=32, 
-    inference_do_sample: bool=False, 
+    inference_do_sample: bool=True, 
 
     gcloud_project: Optional[str]=None, 
     gcloud_token_path: Optional[str]=None, 
@@ -77,11 +76,33 @@ def main(
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
 
+    # mesh definition
+    if do_pjit:
+        mesh_devices = np.array(jax.devices()).reshape(data_p_shape, model_p_shape)
+        print('using mesh shape:', mesh_devices.shape)
+        print('full mesh:', mesh_devices)
+        mesh = Mesh(mesh_devices, ("dp", "mp"))
+        process_idxs = get_mesh_idxs(jax.process_index(), mesh.devices)
+        process_shape = get_mesh_lens(mesh.devices)
+        print(f'current process index {jax.process_index()}, in position {process_idxs} of {process_shape}')
+    else:
+        mesh = contextlib.nullcontext()
+    
+    # divide bsize by number of data-parallel nodes
+    if do_pjit:
+        train_bsize = convert_bsize(train_bsize, mesh.devices, 0)
+        inference_bsize = convert_bsize(inference_bsize, mesh.devices, 0)
+
     with open(convert_path(data_json_path), 'r') as f:
         raw_data = json.load(f)
     
     raw_train_data, raw_eval_data = raw_data['train'], raw_data['eval']
     
+    # shard data by number of data parallel processes
+    if do_pjit:
+        raw_train_data = shard_data_list(raw_train_data, mesh, 0)
+        raw_eval_data = shard_data_list(raw_eval_data, mesh, 0)
+
     train_data = Seq2SeqDataset.from_str_list(
         list(map(lambda x: (x['in_text'], x['out_text']), raw_train_data)), 
         tokenizer, 
@@ -101,10 +122,6 @@ def main(
         trunc_inputs_last=trunc_inputs_last, 
         trunc_outputs_last=trunc_outputs_last, 
     )
-
-    if checkpoint_is_sharded and checkpoint_path is not None:
-        tail_checkpoint, head_checkpoint = os.path.split(checkpoint_path.strip('/'))
-        checkpoint_path = os.path.join(tail_checkpoint, 'shard_%d' % (jax.process_index()), head_checkpoint)
 
     model, params, shard_rules = load_gptj_model(
         model_str=model_name, 
@@ -140,23 +157,14 @@ def main(
         )
         optim_type = OptimType.AdamWMultiStep
 
-    # mesh definition
-    if do_pjit:
-        mesh_devices = np.array(jax.devices()).reshape(data_p_shape, model_p_shape)
-        print('using mesh shape:', mesh_devices.shape)
-        print('full mesh:', mesh_devices)
-        mesh = Mesh(mesh_devices, ("dp", "mp"))
-    else:
-        mesh = contextlib.nullcontext()
-
     # shard params and optimizer
     if do_pjit:
         (params, param_spec), (optim_state, optim_state_spec) = shard_optim_and_params(partial(model.init_weights, input_shape=(1, 1)), 
-                                                                                       params, shard_rules, mesh, optim, optim_type)
+                                                                                       params, shard_rules, mesh, 1, optim, optim_type)
     else:
         optim_state, param_spec, optim_state_spec = optim.init(params), None, None
 
-    trainer = load_dec_trainer(
+    trainer = load_gpt_dec_trainer(
         model=model, 
         params=params, 
         param_spec=param_spec, 
@@ -167,13 +175,15 @@ def main(
         do_pjit=do_pjit, 
     )
 
-    inference = load_dec_inference(
+    inference = load_gpt_dec_inference(
         model=model, 
         params=params, 
         param_spec=param_spec, 
         tokenizer=tokenizer, 
         do_pjit=do_pjit, 
     )
+
+    param_combine_function = partial(get_host_param_combine_function(param_spec), mesh=mesh)
 
     def evaluator(inference: Seq2SeqInference):
         rng = jax.random.PRNGKey(0)
@@ -213,7 +223,7 @@ def main(
 
     save_dir = None
     if exp_name is not None and outputs_path is not None:
-        save_dir = convert_path(os.path.join(outputs_path, exp_name, 'shard_%d' % (jax.process_index())))
+        save_dir = convert_path(os.path.join(outputs_path, exp_name))
         if (not save_dir.startswith('gcs://')) and (not os.path.exists(save_dir)):
             os.makedirs(save_dir)
         
@@ -223,23 +233,16 @@ def main(
                 f_save.write(f_local.read())
         with open(os.path.join(save_dir, 'input_args.pkl'), 'wb') as f:
             pkl.dump(input_args, f)
-        
-        # save info about mesh devices
-        if do_pjit:
-            with open(os.path.join(save_dir, 'system_mesh.pkl'), 'wb') as f:
-                pkl.dump({'mesh': tree.map_structure(lambda x: {'id': int(x.id), 'process_index': int(x.process_index)}, mesh.devices.tolist()), 
-                          'process_index': int(jax.process_index()), 'process_count': int(jax.process_count())}, f)
     
     rng = jax.random.PRNGKey(1)
     with mesh:
         trainer, inference = train_loop(
-            model=model, 
             trainer=trainer, 
             inference=inference, 
             evaluator=evaluator, 
             dataset=train_data, 
             rng=rng, 
-            save_dir=save_dir, 
+            save_dir=save_dir if jax.process_index() == 0 else None, 
             epochs=epochs, 
             max_steps=max_steps, 
             bsize=train_bsize, 
@@ -253,6 +256,7 @@ def main(
             wandb_project=wandb_project, 
             wandb_run_name=exp_name, 
             wandb_config=None, 
+            param_combine_function=param_combine_function, 
             gcloud_project=gcloud_project, 
             gcloud_token=gcloud_token_path, 
         )
