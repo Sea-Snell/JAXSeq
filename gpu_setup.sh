@@ -22,6 +22,8 @@ conda env create -f environment.yml
 conda activate JaxSeq
 python -m pip install --upgrade pip && python -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
+# currently need to fix the jax version
+python -m pip install jax==0.3.21 jaxlib==0.3.20
 
 # clean up
 rm -rf Miniconda3-py39_4.12.0-Linux-x86_64.sh
