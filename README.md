@@ -6,7 +6,7 @@ Built on top of [HuggingFace](https://huggingface.co)'s [Transformers](https://g
 
 Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pjit.html) function, you can straightforwardly train models with arbitrary model and data parellelism; you can trade-off these two as you like. You can also do model parallelism across multiple hosts. Support for gradient checkpointing, gradient accumulation, and bfloat16 training/inference is provided as well for memory efficient training.
 
-**If you encounter an error or want to contribute, feel free to drop an issue!**
+***If you encounter an error or want to contribute, feel free to drop an issue!***
 
 ## installation
 

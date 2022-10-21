@@ -219,9 +219,9 @@ class FlaxGPTJAttention(nn.Module):
 
         sincos = jnp.take(self.embed_positions, position_ids, axis=0)
         sincos = jnp.split(sincos, 2, axis=-1)
+        # Rotary position embeddings induce some weird issues in multi-host environments, so we remove activation-sharding for keys/query vectors to fix this.
         resource_env = pxla.thread_resources.env
         mesh = resource_env.physical_mesh
-        # Rotary position embeddings induce some weird issues in multi-host environments, so we remove activation-sharding for keys/query vectors to fix this.
         if "dp" in mesh.axis_names:
             key = with_sharding_constraint(key, PartitionSpec("dp", None, None, None))
             query = with_sharding_constraint(query, PartitionSpec("dp", None, None, None))
