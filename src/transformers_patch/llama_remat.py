@@ -11,7 +11,8 @@ from flax.linen.attention import dot_product_attention_weights
 from flax.traverse_util import flatten_dict, unflatten_dict
 from jax import lax
 from flax.linen import partitioning as nn_partitioning
-
+from transformers.generation_flax_logits_process import FlaxLogitsProcessorList
+from transformers_patch.pad_tokens_logit_processor import FlaxTokenPaddingLogitProcessor
 from transformers.modeling_flax_outputs import FlaxBaseModelOutput, FlaxCausalLMOutput
 from transformers.modeling_flax_utils import ACT2FN, FlaxPreTrainedModel, append_call_sample_docstring
 from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging
@@ -417,6 +418,11 @@ class FlaxLLaMAPreTrainedModel(FlaxPreTrainedModel):
             jax.random.PRNGKey(0), input_ids, attention_mask, position_ids, return_dict=False, init_cache=True
         )
         return init_variables["cache"]
+    
+    def _get_logits_processor(self,*args, **kwargs) -> FlaxLogitsProcessorList:
+        processors = super()._get_logits_processor(*args, **kwargs)
+        processors.append(FlaxTokenPaddingLogitProcessor(self.config.n_real_tokens))
+        return processors
 
     @add_start_docstrings_to_model_forward("")
     def __call__(

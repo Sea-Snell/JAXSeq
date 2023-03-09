@@ -42,8 +42,9 @@ class InferenceServer:
         from utils.gcs_manager import open_pp as open
         open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
-        tokenizer = LLaMATokenizer(tokenizer_path)
+        tokenizer = LLaMATokenizer(tokenizer_path, bos_token="<s>", eos_token="</s>", add_bos_token=False, add_eos_token=False)
         tokenizer.pad_token_id = tokenizer.eos_token_id
+        tokenizer.add_special_tokens({'bos_token': '<s>', 'eos_token': '</s>'})
 
         # mesh definition
         if do_pjit:
@@ -88,11 +89,11 @@ class InferenceServer:
     def generate(self, in_strs: List[str], max_input_length: int, 
                  rng: int, **generation_kwargs: Dict[str, Any]):
         with self.mesh:
-            return self.inference.generate_from_str(in_strs, max_input_length, jax.random.PRNGKey(rng), **generation_kwargs)
+            return self.inference.generate_from_str('<s>'+in_strs, max_input_length, jax.random.PRNGKey(rng), **generation_kwargs)
     
     def log_probs(self, in_strs: List[str], out_strs: List[str], max_input_length: int, max_output_length: int):
         with self.mesh:
-            return self.inference.log_probs_from_str(in_strs, out_strs, max_input_length, max_output_length).log_probs.tolist()
+            return self.inference.log_probs_from_str('<s>'+in_strs, out_strs, max_input_length, max_output_length).log_probs.tolist()
 
 InferenceServerMP = serve_class(InferenceServer)
 
