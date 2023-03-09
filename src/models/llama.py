@@ -52,8 +52,11 @@ class ModelArgs:
 def config_from_params(args: ModelArgs, **kwargs) -> LLaMAConfig:
     intermediate_size = int(2 * (args.dim * 4) / 3)
     intermediate_size = args.multiple_of * ((intermediate_size + args.multiple_of - 1) // args.multiple_of)
+    vocab_size = args.vocab_size
+    if 'vocab_size' in kwargs:
+        vocab_size = kwargs.pop('vocab_size')
     return LLaMAConfig(
-        vocab_size=args.vocab_size, 
+        vocab_size=vocab_size, 
         hidden_size=args.dim, 
         intermediate_size=intermediate_size, 
         num_hidden_layers=args.n_layers, 
@@ -129,7 +132,7 @@ def load_llama_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_
                                            vocab_size=n_tokens, dtype=dtype, 
                                            pad_token_id=pad_token_id)
 
-    model, params = FlaxLLaMAForCausalLM(config, _do_init=False, dtype=dtype, pad_token_id=pad_token_id)
+    model = FlaxLLaMAForCausalLM(config, _do_init=False, dtype=dtype)
     params = jax.tree_map(lambda x: jnp.asarray(x), params)
     
     return model, freeze(params)
@@ -159,8 +162,6 @@ def load_llama_from_random(model_str, dtype, pad_token_id, n_tokens, n_real_toke
 def load_llama_model(model_str: str, from_pretrained: bool, checkpoint_path: Optional[str], 
                     use_fp16: bool, tokenizer: PreTrainedTokenizer, gradient_checkpoint: bool, 
                     seed: int, gcloud_project: Optional[str]=None, gcloud_token: Optional[Any]=None):
-    # pad token should be last token
-    assert tokenizer.pad_token_id == (len(tokenizer)-1)
     n_tokens = len(tokenizer)
 
     with jax.default_device(jax.devices('cpu')[0]):
