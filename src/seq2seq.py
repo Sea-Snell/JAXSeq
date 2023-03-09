@@ -39,7 +39,7 @@ class Seq2SeqTrainer(Trainer):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         in_tokens = [self.tokenizer.encode(item) for item in in_strs]
-        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
+        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False, trunc_last=False)
 
         if out_str_preproc is not None:
             out_strs = list(map(out_str_preproc, out_strs))
@@ -68,7 +68,7 @@ class Seq2SeqInference(Inference):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         tokens = [self.tokenizer.encode(item) for item in in_strs]
-        tokens = block_sequences(tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
+        tokens = block_sequences(tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False, trunc_last=False)
         outputs = self.generate(jnp.asarray(tokens), rng_key, **generation_kwargs)
 
         out_strs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
@@ -90,7 +90,7 @@ class Seq2SeqInference(Inference):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         in_tokens = [self.tokenizer.encode(item) for item in in_strs]
-        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
+        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False, trunc_last=False)
 
         if out_str_preproc is not None:
             out_strs = list(map(out_str_preproc, out_strs))
@@ -114,7 +114,7 @@ class Seq2SeqInference(Inference):
         if in_str_preproc is not None:
             in_strs = list(map(in_str_preproc, in_strs))
         in_tokens = [self.tokenizer.encode(item) for item in in_strs]
-        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False)
+        in_tokens = block_sequences(in_tokens, max_input_length, self.tokenizer.pad_token_id, dtype=np.int32, pad_right=False, trunc_last=False)
 
         if out_str_preproc is not None:
             out_strs = list(map(out_str_preproc, out_strs))
@@ -310,7 +310,9 @@ def load_t5_enc_dec_inference(
         logits = model(input_ids=in_tokens, attention_mask=in_attn_mask, 
                        decoder_input_ids=out_tokens, decoder_attention_mask=out_attn_mask, 
                        params=params, train=False).logits
-        log_probs = -(softmax_cross_entropy_with_integer_labels(logits[:, :-1, :], out_tokens[:, 1:]) * out_attn_mask[:, 1:]).sum(axis=1)
+        logits = logits.at[:, :, model.config.n_real_tokens:].set(-float('inf'))
+        log_logits = -softmax_cross_entropy_with_integer_labels(logits[:, :-1, :], out_tokens[:, 1:])
+        log_probs = jnp.where(out_attn_mask == 1, log_logits, 0.0).sum(axis=1)
         if do_pjit:
             logits = with_sharding_constraint(logits, data_shard_spec.logits_spec)
             log_probs = with_sharding_constraint(log_probs, data_shard_spec.logprobs_spec)
@@ -458,7 +460,9 @@ def load_gpt_dec_inference(
 
         logits = model(input_ids=full_tokens, attention_mask=full_attn_mask, 
                        position_ids=full_position_ids, params=params, train=False).logits
-        log_probs = -(softmax_cross_entropy_with_integer_labels(logits[:, (in_tokens.shape[1]-1):-1, :], out_tokens) * out_attn_mask).sum(axis=1)
+        logits = logits.at[:, :, model.config.n_real_tokens:].set(-float('inf'))
+        log_logits = -softmax_cross_entropy_with_integer_labels(logits[:, (in_tokens.shape[1]-1):-1, :], out_tokens)
+        log_probs = jnp.where(out_attn_mask == 1, log_logits, 0.0).sum(axis=1)
         if do_pjit:
             logits = with_sharding_constraint(logits, data_shard_spec.logits_spec)
             log_probs = with_sharding_constraint(log_probs, data_shard_spec.logprobs_spec)
@@ -614,7 +618,9 @@ def load_opt_dec_inference(
 
         logits = model(input_ids=full_tokens, attention_mask=full_attn_mask, 
                        position_ids=full_position_ids, params=params, train=False).logits
-        log_probs = -(softmax_cross_entropy_with_integer_labels(logits[:, (in_tokens.shape[1]-1):-1, :], out_tokens) * out_attn_mask).sum(axis=1)
+        logits = logits.at[:, :, model.config.n_real_tokens:].set(-float('inf'))
+        log_logits = -softmax_cross_entropy_with_integer_labels(logits[:, (in_tokens.shape[1]-1):-1, :], out_tokens)
+        log_probs = jnp.where(out_attn_mask == 1, log_logits, 0.0).sum(axis=1)
         if do_pjit:
             logits = with_sharding_constraint(logits, data_shard_spec.logits_spec)
             log_probs = with_sharding_constraint(log_probs, data_shard_spec.logprobs_spec)
