@@ -96,7 +96,7 @@ InferenceServerMP = serve_class(InferenceServer)
 
 # feel free to change any of these settings
 inference_server = InferenceServerMP(
-    model_name='EleutherAI/gpt-j-6B', 
+    model_name='path/to/llama/65B/', 
     checkpoint_path=None, 
     model_p_shape=8, 
 )
