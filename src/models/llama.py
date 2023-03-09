@@ -52,8 +52,11 @@ class ModelArgs:
 def config_from_params(args: ModelArgs, **kwargs) -> LLaMAConfig:
     intermediate_size = int(2 * (args.dim * 4) / 3)
     intermediate_size = args.multiple_of * ((intermediate_size + args.multiple_of - 1) // args.multiple_of)
+    vocab_size = args.vocab_size
+    if 'vocab_size' in kwargs:
+        vocab_size = kwargs.pop('vocab_size')
     return LLaMAConfig(
-        vocab_size=args.vocab_size, 
+        vocab_size=vocab_size, 
         hidden_size=args.dim, 
         intermediate_size=intermediate_size, 
         num_hidden_layers=args.n_layers, 
