@@ -132,7 +132,7 @@ def load_llama_from_pretrained(model_str, dtype, pad_token_id, n_tokens, n_real_
                                            vocab_size=n_tokens, dtype=dtype, 
                                            pad_token_id=pad_token_id)
 
-    model, params = FlaxLLaMAForCausalLM(config, _do_init=False, dtype=dtype, pad_token_id=pad_token_id)
+    model = FlaxLLaMAForCausalLM(config, _do_init=False, dtype=dtype)
     params = jax.tree_map(lambda x: jnp.asarray(x), params)
     
     return model, freeze(params)
