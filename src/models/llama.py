@@ -159,8 +159,6 @@ def load_llama_from_random(model_str, dtype, pad_token_id, n_tokens, n_real_toke
 def load_llama_model(model_str: str, from_pretrained: bool, checkpoint_path: Optional[str], 
                     use_fp16: bool, tokenizer: PreTrainedTokenizer, gradient_checkpoint: bool, 
                     seed: int, gcloud_project: Optional[str]=None, gcloud_token: Optional[Any]=None):
-    # pad token should be last token
-    assert tokenizer.pad_token_id == (len(tokenizer)-1)
     n_tokens = len(tokenizer)
 
     with jax.default_device(jax.devices('cpu')[0]):
