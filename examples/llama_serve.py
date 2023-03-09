@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, request
 from flask_cors import CORS
 from models.llama import load_llama_model
+from transformers_patch.llama_tokenizer import LLaMATokenizer
 from seq2seq import load_gpt_dec_inference
 from utils.multihost_shard_utils import get_mesh_idxs, get_mesh_lens
 from utils.serve_queue import serve_class
@@ -29,6 +30,7 @@ class InferenceServer:
         model_name: str, # path to llama weights
 
         checkpoint_path: Optional[str]=None, 
+        tokenizer_path: Optional[str]=None, 
 
         do_pjit: bool=True, 
         model_p_shape: int=1, 
@@ -40,8 +42,8 @@ class InferenceServer:
         from utils.gcs_manager import open_pp as open
         open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
+        tokenizer = LLaMATokenizer(tokenizer_path)
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
         # mesh definition
         if do_pjit:
