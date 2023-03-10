@@ -44,7 +44,7 @@ class InferenceServer:
 
         tokenizer = LLaMATokenizer(tokenizer_path, bos_token="<s>", eos_token="</s>", add_bos_token=False, add_eos_token=False)
         tokenizer.pad_token_id = tokenizer.unk_token_id
-        tokenizer.add_special_tokens({'bos_token': '<s>', 'eos_token': '</s>', 'pad_token': '</pad>'})
+        tokenizer.add_special_tokens({'bos_token': '<s>', 'eos_token': '</s>'})
 
         # mesh definition
         if do_pjit:
