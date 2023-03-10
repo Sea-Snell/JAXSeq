@@ -43,8 +43,8 @@ class InferenceServer:
         open = partial(open, gcloud_project=gcloud_project, gcloud_token=gcloud_token_path)
 
         tokenizer = LLaMATokenizer(tokenizer_path, bos_token="<s>", eos_token="</s>", add_bos_token=False, add_eos_token=False)
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-        tokenizer.add_special_tokens({'bos_token': '<s>', 'eos_token': '</s>'})
+        tokenizer.pad_token_id = tokenizer.unk_token_id
+        tokenizer.add_special_tokens({'bos_token': '<s>', 'eos_token': '</s>', 'pad_token': '</pad>'})
 
         # mesh definition
         if do_pjit:
