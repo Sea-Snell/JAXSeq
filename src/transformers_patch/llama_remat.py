@@ -61,8 +61,8 @@ def apply_rotary_emb(
     dtype: jnp.dtype=jnp.float32, 
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     
-    reshape_xq = xq.astype(dtype).reshape(*xq.shape[:-1], -1, 2)
-    reshape_xk = xk.astype(dtype).reshape(*xk.shape[:-1], -1, 2)
+    reshape_xq = xq.astype(jnp.float32).reshape(*xq.shape[:-1], -1, 2)
+    reshape_xk = xk.astype(jnp.float32).reshape(*xk.shape[:-1], -1, 2)
     
     xq_ = jax.lax.complex(reshape_xq[..., 0], reshape_xq[..., 1])
     xk_ = jax.lax.complex(reshape_xk[..., 0], reshape_xk[..., 1])
@@ -76,7 +76,7 @@ def apply_rotary_emb(
     xk_out = xk_ * freqs_cis
     xk_out = jnp.stack((jnp.real(xk_out), jnp.imag(xk_out)), axis=-1).reshape(*xk_out.shape[:-1], -1)
 
-    return xq_out.astype(xq.dtype), xk_out.astype(xk.dtype)
+    return xq_out.astype(dtype), xk_out.astype(dtype)
 
 class FlaxLLaMAAttention(nn.Module):
     config: LLaMAConfig
