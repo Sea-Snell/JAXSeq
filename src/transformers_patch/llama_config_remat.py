@@ -103,6 +103,8 @@ class LLaMAConfig(PretrainedConfig):
         self.attn_pdrop = attn_pdrop
         self.gradient_checkpointing = gradient_checkpointing
         self.n_real_tokens = n_real_tokens
+        if self.n_real_tokens is None:
+            self.n_real_tokens = self.vocab_size
         super().__init__(
             pad_token_id=pad_token_id,
             bos_token_id=bos_token_id,
