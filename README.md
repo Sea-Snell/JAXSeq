@@ -1,4 +1,4 @@
-# JaxSeq2
+# JaxSeq
 
 ## Overview
 
@@ -13,8 +13,8 @@ Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pji
 ### **1. pull from github**
 
 ``` bash
-git clone https://github.com/Sea-Snell/JaxSeq2.git
-cd JaxSeq2
+git clone https://github.com/Sea-Snell/JAXSeq.git
+cd JAXSeq
 ```
 
 ### **2. install dependencies**
@@ -24,7 +24,7 @@ Install with conda (cpu, tpu, or gpu).
 **install with conda (cpu):**
 ``` shell
 conda env create -f environment.yml
-conda activate JaxSeq2
+conda activate JaxSeq
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
@@ -32,7 +32,7 @@ python -m pip install -e .
 **install with conda (gpu):**
 ``` shell
 conda env create -f environment.yml
-conda activate JaxSeq2
+conda activate JaxSeq
 python -m pip install --upgrade pip
 conda install jaxlib=*=*cuda* jax cuda-nvcc -c conda-forge -c nvidia
 python -m pip install -e .
@@ -41,7 +41,7 @@ python -m pip install -e .
 **install with conda (tpu):**
 ``` shell
 conda env create -f environment.yml
-conda activate JaxSeq2
+conda activate JaxSeq
 python -m pip install --upgrade pip
 pip install jax[tpu] -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 python -m pip install -e .
@@ -72,8 +72,3 @@ To further support TPU workflows the example scripts provide functionality for u
 * [GPT-J Repo](https://github.com/kingoflolz/mesh-transformer-jax) [uses xmap instead of pjit]
 * [Alpa](https://github.com/alpa-projects/alpa)
 * [Jaxformer](https://github.com/salesforce/jaxformer)
-
-## TODO
-* [ ] Improve serving function, use redis pub-sub instead.
-* [ ] Add OPT?
-* [ ] Add GPT-Neo?

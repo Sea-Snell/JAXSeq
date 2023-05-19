@@ -1,4 +1,4 @@
-name: JaxSeq2
+name: JaxSeq
 channels:
 - defaults
 - conda-forge

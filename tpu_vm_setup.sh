@@ -19,7 +19,7 @@ bash ~/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh -b
 source ~/miniconda3/bin/activate
 conda init bash
 conda env create -f environment.yml
-conda activate JaxSeq2
+conda activate JaxSeq
 python -m pip install --upgrade pip && python -m pip install jax[tpu] -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 
 # clean up
