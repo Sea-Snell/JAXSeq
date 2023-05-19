@@ -1,4 +1,4 @@
-# JaxSeq
+# JaxSeq2
 
 ## Overview
 
@@ -13,9 +13,8 @@ Thanks to Jax's [pjit](https://jax.readthedocs.io/en/latest/jax.experimental.pji
 ### **1. pull from github**
 
 ``` bash
-git clone https://github.com/Sea-Snell/JAXSeq.git
-cd JAXSeq
-export PYTHONPATH=${PWD}/src/
+git clone https://github.com/Sea-Snell/JaxSeq2.git
+cd JaxSeq2
 ```
 
 ### **2. install dependencies**
@@ -25,34 +24,39 @@ Install with conda (cpu, tpu, or gpu).
 **install with conda (cpu):**
 ``` shell
 conda env create -f environment.yml
-conda activate JaxSeq
+conda activate JaxSeq2
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
 
 **install with conda (gpu):**
 ``` shell
 conda env create -f environment.yml
-conda activate JaxSeq
+conda activate JaxSeq2
 python -m pip install --upgrade pip
-python -m pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+conda install jaxlib=*=*cuda* jax cuda-nvcc -c conda-forge -c nvidia
+python -m pip install -e .
 ```
 
 **install with conda (tpu):**
 ``` shell
 conda env create -f environment.yml
-conda activate JaxSeq
+conda activate JaxSeq2
 python -m pip install --upgrade pip
-python -m pip install "jax[tpu]==0.3.21" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+pip install jax[tpu] -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+python -m pip install -e .
 ```
 
 ## Workflow
 
-We provide some example scripts for training and evaluating GPT2, GPTJ, OPT, and T5 models using JaxSeq. However you should feel free to build your own workflow for training. You can find these scripts in the `examples/` directory. Each script takes as input a json file which should be of shape:
+We provide some example scripts for training and evaluating GPT2, GPTJ, LLaMA, and T5 models using JaxSeq. However you should feel free to build your own workflow for training. You can find these scripts in the `examples/` directory. Each training script takes as input a jsonl file for eval and train data, each of which should be of shape:
 ``` json
-{
-"train": [{"in_text": "something", "out_text": "something else"}, ...], 
-"eval": [{"in_text": "something else else", "out_text": "something else else else"}, ...], 
-}
+{"in_text": "something", "out_text": "something else"}, 
+{"in_text": "something else else", "out_text": "something else else else"}, 
+...
 ```
+
+The examples all use [tyro](https://github.com/brentyi/tyro) to manage commandline args (see their [documentation](https://brentyi.github.io/tyro)).
 
 This code was largely tested, developed, and optimized for use on TPU-pods, though it should also work well on GPU clusters.
 
@@ -69,3 +73,7 @@ To further support TPU workflows the example scripts provide functionality for u
 * [Alpa](https://github.com/alpa-projects/alpa)
 * [Jaxformer](https://github.com/salesforce/jaxformer)
 
+## TODO
+* [ ] Improve serving function, use redis pub-sub instead.
+* [ ] Add OPT?
+* [ ] Add GPT-Neo?

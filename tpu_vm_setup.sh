@@ -11,19 +11,16 @@ apt-get update -q \
     && rm -rf /var/lib/apt/lists/*
 
 # install miniforge
-rm -rf Miniconda3-py39_4.12.0-Linux-x86_64.sh
-wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
-bash Miniconda3-py39_4.12.0-Linux-x86_64.sh -b
+rm -rf ~/Miniconda3-py39_4.12.0-Linux-x86_64.sh
+wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh -P ~/
+bash ~/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh -b
 
 # install dependencies
-source miniconda3/bin/activate
+source ~/miniconda3/bin/activate
 conda init bash
 conda env create -f environment.yml
-conda activate JaxSeq
-python -m pip install --upgrade pip && python -m pip install "jax[tpu]>=0.2.16" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
-
-# currently need to fix the jax version
-python -m pip install jax==0.3.21 jaxlib==0.3.20
+conda activate JaxSeq2
+python -m pip install --upgrade pip && python -m pip install jax[tpu] -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 
 # clean up
-rm -rf Miniconda3-py39_4.12.0-Linux-x86_64.sh
+rm -rf ~/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh
