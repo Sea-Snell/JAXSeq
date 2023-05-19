@@ -69,8 +69,11 @@ To further support TPU workflows the example scripts provide functionality for u
 
 ## Other Excellent References for Working with Large Models in Jax
 
+* [EasyLM](https://github.com/young-geng/EasyLM)
 * [DALL-E Mini Repo](https://t.co/BlM8e66utJ)
 * [Huggingface Model Parallel Jax Demo](https://t.co/eGscnvtNDR)
 * [GPT-J Repo](https://github.com/kingoflolz/mesh-transformer-jax) [uses xmap instead of pjit]
 * [Alpa](https://github.com/alpa-projects/alpa)
 * [Jaxformer](https://github.com/salesforce/jaxformer)
+
+**Many components of this repo came from collaboration with [EasyLM](https://github.com/young-geng/EasyLM).**
