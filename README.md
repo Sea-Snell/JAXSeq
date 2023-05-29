@@ -53,8 +53,8 @@ python -m pip install -e .
 
 We provide some example scripts for training and evaluating GPT2, GPTJ, LLaMA, and T5 models using JaxSeq. However you should feel free to build your own workflow for training. You can find these scripts in the `examples/` directory. Each training script takes as input a jsonl file for eval and train data, each of which should be of shape:
 ``` json
-{"in_text": "something", "out_text": "something else"}, 
-{"in_text": "something else else", "out_text": "something else else else"}, 
+{"in_text": "something", "out_text": "something else"} 
+{"in_text": "something else else", "out_text": "something else else else"}
 ...
 ```
 
